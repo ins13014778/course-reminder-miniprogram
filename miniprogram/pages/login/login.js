@@ -22,9 +22,14 @@ Page({
           wx.hideLoading();
           wx.showToast({ title: '登录成功', icon: 'success' });
 
-          // 4. 跳转到首页
+          // 4. 返回上一页（如果有），否则跳转首页
           setTimeout(() => {
-            wx.redirectTo({ url: '/pages/index/index' });
+            const pages = getCurrentPages();
+            if (pages.length > 1) {
+              wx.navigateBack();
+            } else {
+              wx.reLaunch({ url: '/pages/index/index' });
+            }
           }, 1000);
         } catch (error) {
           wx.hideLoading();

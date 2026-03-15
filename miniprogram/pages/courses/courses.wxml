@@ -1,5 +1,4 @@
 <view class="container">
-  <!-- 顶部周选择 -->
   <view class="week-tabs">
     <view
       wx:for="{{['周一','周二','周三','周四','周五','周六','周日']}}"
@@ -12,24 +11,43 @@
     </view>
   </view>
 
-  <view wx:if="{{loading}}" class="loading">
+  <view wx:if="{{!isLoggedIn}}" class="empty">
+    <text class="empty-icon">📚</text>
+    <text class="empty-text">登录后可查看你的课表</text>
+    <text class="login-link" bindtap="goToLogin">去登录</text>
+  </view>
+
+  <view wx:elif="{{loading}}" class="loading">
     <text>加载中...</text>
   </view>
 
   <view wx:else class="course-list">
+    <view class="page-tip" wx:if="{{courses.length > 0}}">
+      <text>点课程可修改，长按可删除，右下角可添加课程</text>
+    </view>
+
     <view
       wx:for="{{courses}}"
       wx:key="id"
       class="course-card"
-      style="--card-color: {{colors[idx % 6]}}"
+      style="border-left: 4rpx solid {{item.color}}"
       bindtap="onCourseClick"
+      bindlongpress="onDeleteCourse"
+      data-course="{{item}}"
       data-id="{{item.id}}">
-      <view class="color-bar"></view>
       <view class="card-content">
         <view class="card-header">
           <text class="course-name">{{item.courseName}}</text>
-          <text class="section-info">第{{item.startSection}}-{{item.endSection}}节</text>
+          <view class="header-tags">
+            <text class="period-tag">{{item.periodLabel}}</text>
+            <text class="section-info">{{item.sectionLabel}}</text>
+          </view>
         </view>
+
+        <view class="time-row">
+          <text class="time-chip">{{item.timeLabel}}</text>
+        </view>
+
         <view class="card-body">
           <view class="info-item" wx:if="{{item.teacherName}}">
             <text class="icon">👨‍🏫</text>
@@ -40,7 +58,7 @@
             <text>{{item.classroom || '待定'}}</text>
           </view>
           <view class="info-item">
-            <text class="icon">📅</text>
+            <text class="icon">🗓️</text>
             <text>第{{item.startWeek}}-{{item.endWeek}}周</text>
           </view>
         </view>
@@ -48,20 +66,24 @@
     </view>
   </view>
 
-  <view wx:if="{{!loading && courses.length === 0}}" class="empty">
+  <view wx:if="{{isLoggedIn}}" class="add-btn" bindtap="onAddCourse">
+    <text class="add-icon">+</text>
+  </view>
+
+  <view wx:if="{{isLoggedIn && !loading && courses.length === 0}}" class="empty">
     <text class="empty-icon">📚</text>
     <text class="empty-text">当天没有课程</text>
+    <text class="empty-subtext">点击右下角可以添加课程</text>
   </view>
 </view>
 
-<!-- 底部导航 -->
 <view class="bottom-nav">
   <view class="nav-item" bindtap="goToIndex">
     <text class="icon">🏠</text>
     <text class="label">首页</text>
   </view>
   <view class="nav-item active" bindtap="goToCourses">
-    <text class="icon">📅</text>
+    <text class="icon">🗓️</text>
     <text class="label">课表</text>
   </view>
   <view class="nav-item" bindtap="goToImport">

@@ -1,12 +1,19 @@
 <view class="container">
   <!-- 顶部栏 -->
   <view class="top-bar">
-    <view class="user-info">
+    <view class="user-info" wx:if="{{isLoggedIn}}">
       <image class="avatar" src="{{user.avatar_url || user.avatar}}" wx:if="{{user.avatar_url || user.avatar}}" />
       <view class="avatar-placeholder" wx:else>👤</view>
       <view class="welcome">
         <text class="greeting">欢迎回来，</text>
         <text class="username">{{user.nickname || '同学'}}</text>
+      </view>
+    </view>
+    <view class="user-info" wx:else>
+      <view class="avatar-placeholder">👤</view>
+      <view class="welcome">
+        <text class="greeting">课程提醒系统</text>
+        <text class="username" style="color:#4F46E5;" bindtap="goToLogin">登录查看更多 ›</text>
       </view>
     </view>
     <view class="notification-btn">
@@ -16,7 +23,7 @@
   </view>
 
   <!-- 周次选择器 -->
-  <view class="week-selector">
+  <view class="week-selector" wx:if="{{isLoggedIn}}">
     <scroll-view scroll-x class="week-scroll">
       <view class="week-list">
         <view
@@ -64,7 +71,11 @@
 
     <view wx:else class="empty-state">
       <text class="icon">📅</text>
-      <text class="text">今天没有课程，好好休息！</text>
+      <text class="text" wx:if="{{isLoggedIn}}">今天没有课程，好好休息！</text>
+      <view wx:else style="text-align:center;">
+        <text class="text">登录后可查看今日课程</text>
+        <text class="text" style="color:#4F46E5;margin-top:16rpx;display:block;" bindtap="goToLogin">去登录 ›</text>
+      </view>
     </view>
   </view>
 
@@ -87,7 +98,7 @@
   </view>
 
   <!-- 学期进度 -->
-  <view class="progress-section">
+  <view class="progress-section" wx:if="{{isLoggedIn}}">
     <view class="progress-header">
       <text class="title">学期进度</text>
       <text class="week-info">第 {{currentWeek}} / {{totalWeeks}} 周</text>

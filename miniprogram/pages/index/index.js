@@ -5,29 +5,22 @@ Page({
     currentWeek: 1,
     totalWeeks: 18,
     weekdayText: '',
+    isLoggedIn: false,
     colors: ['#4F46E5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'],
   },
 
   onLoad() {
-    this.checkAuth();
+    this.loadData();
   },
 
   onShow() {
-    this.checkAuth();
-  },
-
-  checkAuth() {
-    const token = wx.getStorageSync('token');
-    if (!token) {
-      wx.reLaunch({ url: '/pages/login/login' });
-      return;
-    }
     this.loadData();
   },
 
   loadData() {
     const user = wx.getStorageSync('user') || {};
     const token = wx.getStorageSync('token');
+    const isLoggedIn = !!token;
     const weekdays = ['', '周一', '周二', '周三', '周四', '周五', '周六', '周日'];
     const now = new Date();
     const weekday = now.getDay() || 7;
@@ -36,7 +29,12 @@ Page({
     // 计算当前周次（基于学期开始日期，默认第1周）
     const currentWeek = this.calculateCurrentWeek();
 
-    this.setData({ user, weekdayText, currentWeek });
+    this.setData({ user, weekdayText, currentWeek, isLoggedIn });
+
+    if (!isLoggedIn) {
+      this.setData({ todayCourses: [] });
+      return;
+    }
 
     if (user && user.id) {
       this.loadTodayCourses(user.id, weekday, currentWeek);
@@ -152,4 +150,5 @@ Page({
   goToImport() { wx.navigateTo({ url: '/pages/import/import' }); },
   goToSettings() { wx.navigateTo({ url: '/pages/settings/settings' }); },
   goToProfile() { wx.navigateTo({ url: '/pages/profile/profile' }); },
+  goToLogin() { wx.navigateTo({ url: '/pages/login/login' }); },
 });

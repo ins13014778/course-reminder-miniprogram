@@ -1,0 +1,8 @@
+{
+  "name": "course-reminder-miniprogram",
+  "version": "1.0.0",
+  "description": "课程提醒小程序",
+  "dependencies": {
+    "dayjs": "^1.11.20"
+  }
+}
