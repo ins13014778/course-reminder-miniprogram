@@ -5,14 +5,19 @@ Page({
   },
 
   onLoad() {
-    this.loadUserInfo();
+    this.checkAuth();
   },
 
   onShow() {
-    this.loadUserInfo();
+    this.checkAuth();
   },
 
-  loadUserInfo() {
+  checkAuth() {
+    const token = wx.getStorageSync('token');
+    if (!token) {
+      wx.reLaunch({ url: '/pages/login/login' });
+      return;
+    }
     const user = wx.getStorageSync('user') || {};
     this.setData({ user });
   },

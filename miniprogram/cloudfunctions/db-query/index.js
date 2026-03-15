@@ -4,11 +4,11 @@ exports.main = async (event) => {
   const { sql, params = [] } = event;
 
   const connection = await mysql.createConnection({
-    host: 'sh-cynosdbmysql-grp-g1feelo4.sql.tencentcdb.com',
-    port: 27720,
-    user: 'adwd155sd',
+    host: 'sh-cynosdbmysql-grp-1bn2utju.sql.tencentcdb.com',
+    port: 24694,
+    user: 'xcbk9981',
     password: 'czp123..',
-    database: 'c-66-7gfze7g4075f38c7'
+    database: 'dawdawd15-8g023nsw8cb3f68a'
   });
 
   try {

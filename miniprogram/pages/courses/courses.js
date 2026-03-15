@@ -8,13 +8,22 @@ Page({
   },
 
   onLoad() {
-    const now = new Date();
-    const weekday = now.getDay() || 7;
-    this.setData({ selectedWeekday: weekday });
-    this.loadCourses();
+    this.checkAuth();
   },
 
   onShow() {
+    this.checkAuth();
+  },
+
+  checkAuth() {
+    const token = wx.getStorageSync('token');
+    if (!token) {
+      wx.reLaunch({ url: '/pages/login/login' });
+      return;
+    }
+    const now = new Date();
+    const weekday = now.getDay() || 7;
+    this.setData({ selectedWeekday: weekday });
     this.loadCourses();
   },
 
@@ -25,16 +34,66 @@ Page({
   },
 
   loadCourses() {
+    const user = wx.getStorageSync('user');
+    const token = wx.getStorageSync('token');
+
+    if (user && user.id) {
+      this.fetchCourses(user.id);
+    } else if (token) {
+      wx.cloud.callFunction({
+        name: 'db-query',
+        data: { sql: 'SELECT id FROM users WHERE openid = ? LIMIT 1', params: [token] },
+        success: (res) => {
+          const result = res.result;
+          if (result && result.success && result.data && result.data.length > 0) {
+            const userId = result.data[0].id;
+            wx.setStorageSync('user', Object.assign({}, user || {}, { id: userId }));
+            this.fetchCourses(userId);
+          } else {
+            this.setData({ courses: [], loading: false });
+          }
+        },
+        fail: () => this.setData({ courses: [], loading: false })
+      });
+    } else {
+      this.setData({ courses: [], loading: false });
+    }
+  },
+
+  fetchCourses(userId) {
     this.setData({ loading: true });
-    // TODO: 从后端API获取课程数据
-    const demoCourses = [
-      { id: 1, courseName: '数据结构', teacherName: '张老师', classroom: 'A301', startSection: 1, endSection: 2, startWeek: 1, endWeek: 16 },
-      { id: 2, courseName: '操作系统', teacherName: '李老师', classroom: 'B205', startSection: 3, endSection: 4, startWeek: 1, endWeek: 16 },
-    ];
-    const filtered = demoCourses.filter(c => c.id); // 实际按 weekday 过滤
-    setTimeout(() => {
-      this.setData({ courses: demoCourses, loading: false });
-    }, 300);
+
+    wx.cloud.callFunction({
+      name: 'db-query',
+      data: {
+        sql: 'SELECT * FROM courses WHERE user_id = ? AND weekday = ? ORDER BY start_section',
+        params: [userId, this.data.selectedWeekday]
+      },
+      success: (res) => {
+        const result = res.result;
+        if (result && result.success && result.data) {
+          const courses = result.data.map((c, i) => ({
+            id: c.id,
+            courseName: c.course_name,
+            teacherName: c.teacher,
+            classroom: c.location,
+            startSection: c.start_section,
+            endSection: c.end_section,
+            startWeek: c.start_week,
+            endWeek: c.end_week,
+            color: c.color || this.data.colors[i % this.data.colors.length]
+          }));
+          this.setData({ courses, loading: false });
+        } else {
+          this.setData({ courses: [], loading: false });
+        }
+      },
+      fail: (err) => {
+        console.error('[Courses] 加载课程失败:', err);
+        this.setData({ courses: [], loading: false });
+        wx.showToast({ title: '加载失败', icon: 'none' });
+      }
+    });
   },
 
   onCourseClick(e) {

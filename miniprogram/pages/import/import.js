@@ -4,393 +4,413 @@ const config = require('../../config/index');
 const OCR_CONFIG = {
   baseUrl: 'https://api.scnet.cn/api/llm/v1',
   recognizeEndpoint: '/ocr/recognize',
-  maxFileSize: 10 * 1024 * 1024, // 10MB
+  maxFileSize: 10 * 1024 * 1024,
   supportedFormats: ['jpg', 'jpeg', 'png', 'bmp', 'gif', 'webp'],
   defaultApiKey: 'sk-NjEwLTExMTk0NDQzMzA3LTE3NzMzMTM3MjA5NTM=',
 };
 
-// OCR类型枚举
-const OcrType = {
-  GENERAL: 'GENERAL',           // 通用文字识别
-  ID_CARD: 'ID_CARD',           // 身份证
-  BANK_CARD: 'BANK_CARD',       // 银行卡
-  BUSINESS_LICENSE: 'BUSINESS_LICENSE', // 营业执照
-  VAT_INVOICE: 'VAT_INVOICE',   // 增值税发票
-  TRAIN_TICKET: 'TRAIN_TICKET', // 火车票
-};
-
 Page({
   data: {
-    status: 'idle',
-    taskId: null,
-    ocrType: 'GENERAL', // 默认通用识别
-    recognizedText: '',  // 识别结果文本
-    errorMsg: '',        // 错误信息
-    // OCR类型列表
-    ocrTypes: [
-      { type: 'GENERAL', name: '通用文字识别' },
-      { type: 'ID_CARD', name: '身份证' },
-      { type: 'BANK_CARD', name: '银行卡' },
-      { type: 'BUSINESS_LICENSE', name: '营业执照' },
-      { type: 'VAT_INVOICE', name: '增值税发票' },
-      { type: 'TRAIN_TICKET', name: '火车票' },
-    ],
-    ocrTypeIndex: 0,
-    currentOcrTypeName: '通用文字识别',
+    status: 'idle',       // idle | uploading | success | failed | saving
+    recognizedText: '',
+    parsedCourses: [],     // 解析出的课程列表
+    errorMsg: '',
+    savedCount: 0,
   },
 
-  // 获取API Key
+  _rawOcrText: '',
+
+  onLoad() {
+    this.checkAuth();
+  },
+
+  onShow() {},
+
+  checkAuth() {
+    const token = wx.getStorageSync('token');
+    if (!token) {
+      wx.reLaunch({ url: '/pages/login/login' });
+    }
+  },
+
   getApiKey() {
-    const storedKey = wx.getStorageSync('ocr_api_key') || wx.getStorageSync('token');
-    return storedKey || OCR_CONFIG.defaultApiKey;
+    return OCR_CONFIG.defaultApiKey;
   },
 
-  // 设置API Key
-  setApiKey(key) {
-    wx.setStorageSync('ocr_api_key', key);
-  },
-
-  // 验证图片
-  validateImage(filePath) {
-    // 检查文件扩展名
-    const ext = filePath.split('.').pop()?.toLowerCase() || '';
-    if (!OCR_CONFIG.supportedFormats.includes(ext)) {
-      return {
-        valid: false,
-        error: `不支持的图片格式: ${ext}`
-      };
-    }
-
-    // 检查文件大小
-    try {
-      const fileInfo = wx.getFileSystemManager().statSync(filePath);
-      if (fileInfo.size > OCR_CONFIG.maxFileSize) {
-        return {
-          valid: false,
-          error: `图片大小超过10MB限制`
-        };
-      }
-    } catch (e) {
-      return {
-        valid: false,
-        error: '无法获取图片文件信息'
-      };
-    }
-
-    return { valid: true };
-  },
+  // ==================== 图片选择与上传 ====================
 
   onChooseImage() {
     wx.chooseMedia({
       count: 1,
       mediaType: ['image'],
       sourceType: ['album', 'camera'],
-      sizeType: ['compressed'], // 压缩图片
+      sizeType: ['compressed'],
       success: (res) => {
         const tempFilePath = res.tempFiles[0].tempFilePath;
         const tempFileSize = res.tempFiles[0].size;
-
-        console.log('选择图片:', tempFilePath, '大小:', tempFileSize);
-
-        // 如果图片大于1MB，先压缩
         if (tempFileSize > 1024 * 1024) {
           this.compressImage(tempFilePath);
         } else {
           this.uploadImage(tempFilePath);
         }
       },
-      fail: (err) => {
-        console.error('选择图片失败:', err);
+      fail: () => {
         wx.showToast({ title: '选择图片失败', icon: 'none' });
       }
     });
   },
 
-  // 压缩图片
   compressImage(filePath) {
-    console.log('开始压缩图片...');
     wx.compressImage({
       src: filePath,
       quality: 80,
-      success: (res) => {
-        console.log('压缩成功:', res.tempFilePath);
-        this.uploadImage(res.tempFilePath);
-      },
-      fail: (err) => {
-        console.error('压缩失败，使用原图:', err);
-        this.uploadImage(filePath);
-      }
+      success: (res) => this.uploadImage(res.tempFilePath),
+      fail: () => this.uploadImage(filePath)
     });
   },
 
   uploadImage(filePath) {
-    // 验证图片
-    const validation = this.validateImage(filePath);
-    if (!validation.valid) {
-      wx.showToast({ title: validation.error, icon: 'none' });
+    // 验证
+    const ext = filePath.split('.').pop()?.toLowerCase() || '';
+    if (!OCR_CONFIG.supportedFormats.includes(ext)) {
+      wx.showToast({ title: '不支持的图片格式', icon: 'none' });
       return;
     }
 
-    // 检查API Key
     const apiKey = this.getApiKey();
-    if (!apiKey) {
-      wx.showModal({
-        title: '提示',
-        content: '请先配置API Key',
-        confirmText: '去设置',
-        success: (res) => {
-          if (res.confirm) {
-            wx.navigateTo({ url: '/pages/settings/settings' });
-          }
-        }
-      });
-      return;
-    }
+    this.setData({ status: 'uploading', errorMsg: '', parsedCourses: [], recognizedText: '' });
 
-    console.log('=== 开始上传 ===');
-    console.log('文件路径:', filePath);
-    console.log('OCR类型:', this.data.ocrType);
-    console.log('API Key:', apiKey ? '已配置' : '未配置');
-    console.log('请求URL:', `${OCR_CONFIG.baseUrl}${OCR_CONFIG.recognizeEndpoint}`);
-
-    this.setData({ status: 'uploading', errorMsg: '' });
-
-    // 方式1: 使用uploadFile
     wx.uploadFile({
       url: `${OCR_CONFIG.baseUrl}${OCR_CONFIG.recognizeEndpoint}`,
       filePath,
       name: 'file',
-      formData: {
-        ocrType: this.data.ocrType
-      },
-      header: {
-        'Authorization': `Bearer ${apiKey}`
-      },
-      timeout: 120000, // 120秒超时
-      success: (res) => {
-        this.handleResponse(res);
-      },
+      formData: { ocrType: 'GENERAL' },
+      header: { 'Authorization': `Bearer ${apiKey}` },
+      timeout: 120000,
+      success: (res) => this.handleResponse(res),
       fail: (err) => {
-        console.error('uploadFile失败，尝试base64方式:', err);
-
-        // 方式2: 转base64用request发送
-        this.uploadWithBase64(filePath, apiKey);
+        console.error('上传失败:', err);
+        this.setData({ status: 'failed', errorMsg: '上传失败: ' + (err.errMsg || '网络错误') });
       }
     });
   },
 
-  // 使用base64方式上传 - 构造multipart/form-data
-  uploadWithBase64(filePath, apiKey) {
-    console.log('=== 使用base64方式上传 ===');
-    console.log('OCR类型:', this.data.ocrType);
+  // ==================== OCR 响应处理 ====================
 
-    const fs = wx.getFileSystemManager();
-    const ocrType = this.data.ocrType;
-
-    // 读取文件为ArrayBuffer
-    fs.readFile({
-      filePath,
-      success: (res) => {
-        const arrayBuffer = res.data;
-        const ext = filePath.split('.').pop()?.toLowerCase() || 'jpg';
-        const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
-
-        console.log('文件大小:', arrayBuffer.byteLength);
-
-        // 构造multipart/form-data
-        const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
-        const header = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="image.${ext}"\r\nContent-Type: ${mimeType}\r\n\r\n`;
-        const footer = `\r\n--${boundary}\r\nContent-Disposition: form-data; name="ocrType"\r\n\r\n${ocrType}\r\n--${boundary}--`;
-
-        // 合并数据
-        const headerBuffer = new TextEncoder().encode(header);
-        const footerBuffer = new TextEncoder().encode(footer);
-        const totalLength = headerBuffer.length + arrayBuffer.byteLength + footerBuffer.length;
-        const formData = new ArrayBuffer(totalLength);
-        const formDataView = new Uint8Array(formData);
-
-        formDataView.set(headerBuffer, 0);
-        formDataView.set(new Uint8Array(arrayBuffer), headerBuffer.length);
-        formDataView.set(footerBuffer, headerBuffer.length + arrayBuffer.byteLength);
-
-        console.log('发送multipart请求...');
-
-        wx.request({
-          url: `${OCR_CONFIG.baseUrl}${OCR_CONFIG.recognizeEndpoint}`,
-          method: 'POST',
-          header: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': `multipart/form-data; boundary=${boundary}`
-          },
-          data: formData,
-          timeout: 120000,
-          success: (response) => {
-            console.log('multipart请求成功:', response);
-            this.handleResponse({
-              statusCode: response.statusCode,
-              data: typeof response.data === 'string' ? response.data : JSON.stringify(response.data)
-            });
-          },
-          fail: (err) => {
-            console.error('multipart请求失败:', err);
-            this.setData({
-              status: 'failed',
-              errorMsg: '上传失败: ' + (err.errMsg || '网络错误')
-            });
-            wx.showToast({ title: '上传失败', icon: 'none' });
-          }
-        });
-      },
-      fail: (err) => {
-        console.error('读取文件失败:', err);
-        this.setData({
-          status: 'failed',
-          errorMsg: '读取文件失败'
-        });
-        wx.showToast({ title: '读取文件失败', icon: 'none' });
-      }
-    });
-  },
-
-  // 处理响应
   handleResponse(res) {
-    console.log('=== OCR响应详情 ===');
-    console.log('HTTP状态码:', res.statusCode);
-    console.log('响应数据:', res.data);
-
     try {
       const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
-      console.log('解析后数据:', JSON.stringify(data, null, 2));
 
-      // 检查是否有error字段
       if (data.error) {
-        const errorMsg = data.error.message || '识别失败';
-        console.error('API错误:', data.error);
-        this.setData({ status: 'failed', errorMsg: `${errorMsg}` });
-        wx.showToast({ title: errorMsg, icon: 'none' });
+        this.setData({ status: 'failed', errorMsg: data.error.message || '识别失败' });
         return;
       }
 
-      // 兼容多种成功码格式
       const successCodes = ['0', '200', 0, 200, 'success'];
-      if (successCodes.includes(data.code) || data.code === undefined) {
-        // 识别成功
-        const results = [];
-        if (data.data && Array.isArray(data.data)) {
-          data.data.forEach(item => {
-            if (item.result && Array.isArray(item.result)) {
-              results.push(...item.result);
-            }
-          });
-        }
+      if (!successCodes.includes(data.code) && data.code !== undefined) {
+        this.setData({ status: 'failed', errorMsg: (data.msg || '识别失败') + ' (错误码: ' + data.code + ')' });
+        return;
+      }
 
-        // 提取识别文本
-        let text = '';
-        results.forEach(result => {
-          if (result.elements && result.elements.text) {
-            result.elements.text.forEach(t => {
-              text += t.text + '\n';
+      // 提取所有识别文本
+      let allText = '';
+      if (data.data && Array.isArray(data.data)) {
+        data.data.forEach(item => {
+          if (item.result && Array.isArray(item.result)) {
+            item.result.forEach(r => {
+              if (r.elements && r.elements.text && Array.isArray(r.elements.text)) {
+                r.elements.text.forEach(t => {
+                  allText += t.text + '\n';
+                });
+              }
             });
           }
         });
+      }
 
-        this.setData({
-          status: 'success',
-          recognizedText: text || '识别成功'
-        });
+      this._rawOcrText = allText;
+      const parsedCourses = this.parseScheduleText(allText);
 
-        console.log('识别结果:', results);
-        wx.showToast({ title: '识别成功', icon: 'success' });
+      this.setData({
+        status: 'success',
+        recognizedText: allText || '(无文字识别结果)',
+        parsedCourses
+      });
+
+      if (parsedCourses.length > 0) {
+        wx.showToast({ title: `识别到 ${parsedCourses.length} 门课程`, icon: 'success' });
       } else {
-        // 识别失败 - 显示详细信息
-        const errorMsg = this.getErrorMessage(data.code, data.msg);
-        console.error('识别失败 - code:', data.code, 'msg:', data.msg);
-        this.setData({ status: 'failed', errorMsg: `${errorMsg} (错误码: ${data.code})` });
-        wx.showToast({ title: errorMsg, icon: 'none' });
+        wx.showToast({ title: '未能解析出课程，请检查图片', icon: 'none', duration: 2500 });
       }
     } catch (e) {
       console.error('解析响应失败:', e);
-      console.error('原始响应:', res.data);
       this.setData({ status: 'failed', errorMsg: '响应解析失败: ' + e.message });
-      wx.showToast({ title: '响应解析失败', icon: 'none' });
     }
   },
 
-  // 测试网络连通性
-  testNetwork() {
-    console.log('=== 测试网络连通性 ===');
-    wx.request({
-      url: 'https://api.scnet.cn/api/llm/v1/ocr/recognize',
-      method: 'POST',
-      header: {
-        'Authorization': `Bearer ${this.getApiKey()}`,
-        'Content-Type': 'application/json'
+  // ==================== 课表文本解析 ====================
+
+  parseScheduleText(text) {
+    if (!text) return [];
+
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+    const courses = [];
+    const coursePattern = /^(.{2,20}?)$/; // 课程名一般2-20字
+    const teacherPattern = /老师|教授|讲师|博士/;
+    const roomPattern = /^[A-Za-z]?\d{2,4}$|教室|实验室|机房|楼/;
+    const weekPattern = /(\d+)-(\d+)周/;
+    const sectionPattern = /第?(\d+)-(\d+)节/;
+    const weekdayPattern = /周([一二三四五六日天])/;
+
+    const weekdayMap = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '日': 7, '天': 7 };
+
+    // 策略1: 尝试按"课程名\n老师\n教室"的块模式解析
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+
+      // 跳过表头行（星期一、星期二、节次等）
+      if (/^(星期|周[一二三四五六日天]|第?\d+节|上午|下午|晚上|时间)/.test(line)) {
+        i++;
+        continue;
+      }
+
+      // 跳过纯数字行
+      if (/^\d+$/.test(line)) {
+        i++;
+        continue;
+      }
+
+      // 检测是否是课程名（不是老师名、不是教室号）
+      if (line.length >= 2 && !teacherPattern.test(line) && !roomPattern.test(line) && !/^\d/.test(line)) {
+        const course = {
+          course_name: line,
+          teacher_name: '',
+          classroom: '',
+          weekday: 1,
+          start_section: 1,
+          end_section: 2,
+          start_week: 1,
+          end_week: 16,
+          week_type: 'all'
+        };
+
+        // 向后看几行，提取老师和教室
+        for (let j = 1; j <= 3 && (i + j) < lines.length; j++) {
+          const next = lines[i + j];
+          if (teacherPattern.test(next) && !course.teacher_name) {
+            course.teacher_name = next;
+          } else if ((roomPattern.test(next) || /^[A-Za-z]\d/.test(next)) && !course.classroom) {
+            course.classroom = next;
+          }
+          // 提取周次信息
+          const wm = next.match(weekPattern);
+          if (wm) {
+            course.start_week = parseInt(wm[1]);
+            course.end_week = parseInt(wm[2]);
+          }
+          // 提取节次信息
+          const sm = next.match(sectionPattern);
+          if (sm) {
+            course.start_section = parseInt(sm[1]);
+            course.end_section = parseInt(sm[2]);
+          }
+          // 提取星期信息
+          const dm = next.match(weekdayPattern);
+          if (dm) {
+            course.weekday = weekdayMap[dm[1]] || 1;
+          }
+        }
+
+        // 也检查课程名本身是否包含附加信息（如 "高等数学 周一1-2节"）
+        const wm2 = line.match(weekPattern);
+        if (wm2) {
+          course.start_week = parseInt(wm2[1]);
+          course.end_week = parseInt(wm2[2]);
+          course.course_name = line.replace(weekPattern, '').trim();
+        }
+        const dm2 = line.match(weekdayPattern);
+        if (dm2) {
+          course.weekday = weekdayMap[dm2[1]] || 1;
+          course.course_name = course.course_name.replace(weekdayPattern, '').trim();
+        }
+
+        // 添加中文星期用于显示
+        const weekdayNames = ['', '一', '二', '三', '四', '五', '六', '日'];
+        course.weekdayName = weekdayNames[course.weekday] || '一';
+
+        // 避免重复添加同名课程（同一天同一节次）
+        const dup = courses.find(c =>
+          c.course_name === course.course_name &&
+          c.weekday === course.weekday &&
+          c.start_section === course.start_section
+        );
+        if (!dup && course.course_name.length >= 2) {
+          courses.push(course);
+        }
+
+        i += 2; // 跳过已处理的行
+        continue;
+      }
+
+      i++;
+    }
+
+    // 如果块模式没解析出来，尝试按单行"课程名/老师/教室"格式
+    if (courses.length === 0) {
+      lines.forEach(line => {
+        const parts = line.split(/[\/\\|,，、\t]+/).map(p => p.trim()).filter(p => p);
+        if (parts.length >= 1 && parts[0].length >= 2 && !teacherPattern.test(parts[0]) && !/^\d/.test(parts[0])) {
+          const course = {
+            course_name: parts[0],
+            teacher_name: parts.find(p => teacherPattern.test(p)) || '',
+            classroom: parts.find(p => roomPattern.test(p) || /^[A-Za-z]\d/.test(p)) || '',
+            weekday: 1,
+            start_section: 1,
+            end_section: 2,
+            start_week: 1,
+            end_week: 16,
+            week_type: 'all'
+          };
+          const weekdayNames2 = ['', '一', '二', '三', '四', '五', '六', '日'];
+          course.weekdayName = weekdayNames2[course.weekday] || '一';
+          if (course.course_name.length >= 2) {
+            courses.push(course);
+          }
+        }
+      });
+    }
+
+    // 如果有多门课但都是weekday=1，尝试按顺序分配星期
+    const allSameDay = courses.length > 1 && courses.every(c => c.weekday === 1);
+    if (allSameDay) {
+      // 按每天2门课分配
+      const weekdayNames3 = ['', '一', '二', '三', '四', '五', '六', '日'];
+      courses.forEach((c, idx) => {
+        c.weekday = Math.min(Math.floor(idx / 2) + 1, 7);
+        c.start_section = (idx % 2) * 2 + 1;
+        c.end_section = c.start_section + 1;
+        c.weekdayName = weekdayNames3[c.weekday] || '一';
+      });
+    }
+
+    return courses;
+  },
+
+  // ==================== 确认导入（存入数据库） ====================
+
+  onConfirm() {
+    const courses = this.data.parsedCourses;
+    if (!courses || courses.length === 0) {
+      wx.showToast({ title: '没有可导入的课程', icon: 'none' });
+      return;
+    }
+
+    const token = wx.getStorageSync('token');
+    if (!token) {
+      wx.reLaunch({ url: '/pages/login/login' });
+      return;
+    }
+
+    const user = wx.getStorageSync('user');
+    if (user && user.id) {
+      // 直接使用缓存的 user.id
+      this.saveCourses(user.id, courses);
+    } else {
+      // user.id 不存在，通过 openid 从数据库查找
+      this.setData({ status: 'saving' });
+      wx.showLoading({ title: '正在导入...' });
+
+      wx.cloud.callFunction({
+        name: 'db-query',
+        data: {
+          sql: 'SELECT id FROM users WHERE openid = ? LIMIT 1',
+          params: [token]
+        },
+        success: (res) => {
+          const result = res.result;
+          if (result && result.success && result.data && result.data.length > 0) {
+            const userId = result.data[0].id;
+            // 同时更新本地缓存
+            wx.setStorageSync('user', Object.assign({}, user || {}, { id: userId }));
+            wx.hideLoading();
+            this.saveCourses(userId, courses);
+          } else {
+            wx.hideLoading();
+            wx.showToast({ title: '用户信息异常，请重新登录', icon: 'none' });
+            setTimeout(() => wx.reLaunch({ url: '/pages/login/login' }), 1500);
+          }
+        },
+        fail: () => {
+          wx.hideLoading();
+          wx.showToast({ title: '查询用户失败', icon: 'none' });
+          this.setData({ status: 'success' });
+        }
+      });
+    }
+  },
+
+  saveCourses(userId, courses) {
+    this.setData({ status: 'saving' });
+    wx.showLoading({ title: '正在导入...' });
+
+    const token = wx.getStorageSync('token') || '';
+
+    // 构建批量插入 SQL（包含 _openid 字段，NOT NULL）
+    const values = courses.map(c => {
+      return [
+        userId,
+        c.course_name,
+        c.teacher_name || '',
+        c.classroom || '',
+        c.weekday,
+        c.start_section,
+        c.end_section,
+        c.start_week,
+        c.end_week,
+        token
+      ];
+    });
+
+    const placeholders = values.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+    const flatParams = values.flat();
+
+    wx.cloud.callFunction({
+      name: 'db-query',
+      data: {
+        sql: `INSERT INTO courses (user_id, course_name, teacher, location, weekday, start_section, end_section, start_week, end_week, _openid) VALUES ${placeholders}`,
+        params: flatParams
       },
-      data: {},
       success: (res) => {
-        console.log('网络测试成功:', res);
-        wx.showModal({
-          title: '网络测试',
-          content: 'API可访问，返回: ' + JSON.stringify(res.data).substring(0, 100),
-          showCancel: false
-        });
+        wx.hideLoading();
+        const result = res.result;
+        if (result && result.success) {
+          const count = courses.length;
+          this.setData({ status: 'idle', savedCount: count, parsedCourses: [], recognizedText: '' });
+          wx.showModal({
+            title: '导入成功',
+            content: `已成功导入 ${count} 门课程到你的课表`,
+            showCancel: false,
+            success: () => {
+              wx.navigateTo({ url: '/pages/courses/courses' });
+            }
+          });
+        } else {
+          this.setData({ status: 'failed', errorMsg: '保存失败: ' + (result?.message || '数据库错误') });
+          wx.showToast({ title: '保存失败', icon: 'none' });
+        }
       },
       fail: (err) => {
-        console.error('网络测试失败:', err);
-        wx.showModal({
-          title: '网络测试失败',
-          content: '无法访问API，请检查:\n1. 是否关闭了域名校验\n2. 网络是否正常\n错误: ' + err.errMsg,
-          showCancel: false
-        });
+        wx.hideLoading();
+        console.error('[Import] 保存课程失败:', err);
+        this.setData({ status: 'failed', errorMsg: '保存失败: ' + (err.errMsg || '云函数调用失败') });
+        wx.showToast({ title: '保存失败', icon: 'none' });
       }
     });
   },
 
-  // 获取错误信息
-  getErrorMessage(code, msg) {
-    const errorMap = {
-      '400': '请求格式错误',
-      '401': 'API Key无效，请检查配置',
-      '402': '账户余额不足',
-      '422': '参数错误',
-      '429': '请求过于频繁，请稍后重试',
-      '430': '未授权使用该模型',
-      '431': '账号已停用',
-      '500': '服务器错误，请稍后重试',
-      '503': '服务繁忙，请稍后重试',
-      '511': 'OCR处理异常',
-      '512': '图片下载失败',
-      '513': '图片格式不支持',
-      '514': '图片大小超过10MB',
-      '515': '图片未找到',
-      '516': '票据类型选择错误',
-    };
-    return errorMap[String(code)] || msg || '识别失败';
-  },
-
-  // 切换OCR类型
-  onOcrTypeChange(e) {
-    const index = e.detail.value;
-    const selectedType = this.data.ocrTypes[index];
-    this.setData({
-      ocrType: selectedType.type,
-      ocrTypeIndex: index,
-      currentOcrTypeName: selectedType.name,
-    });
-  },
-
-  // 跳转设置页面
-  goToSettings() {
-    wx.navigateTo({ url: '/pages/settings/settings' });
-  },
-
-  onConfirm() {
-    wx.navigateBack();
-  },
-
-  // 重新识别
   onRetry() {
-    this.setData({ status: 'idle', errorMsg: '' });
+    this.setData({ status: 'idle', errorMsg: '', parsedCourses: [], recognizedText: '' });
   },
 
   // 底部导航

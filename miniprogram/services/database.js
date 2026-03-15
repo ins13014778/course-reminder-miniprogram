@@ -103,14 +103,13 @@ async function addCourse(userId, course) {
   return await db.from('courses').insert({
     user_id: userId,
     course_name: course.course_name,
-    teacher_name: course.teacher_name,
-    classroom: course.classroom,
+    teacher: course.teacher || course.teacher_name || '',
+    location: course.location || course.classroom || '',
     weekday: course.weekday,
     start_section: course.start_section,
     end_section: course.end_section,
     start_week: course.start_week,
-    end_week: course.end_week,
-    week_type: course.week_type || 'all'
+    end_week: course.end_week
   });
 }
 

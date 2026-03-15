@@ -3,23 +3,12 @@
     <text class="title">导入课表</text>
   </view>
 
-  <!-- OCR类型选择 -->
-  <view class="type-selector">
-    <view class="type-label">识别类型</view>
-    <picker mode="selector" range="{{ocrTypes}}" range-key="name" value="{{ocrTypeIndex}}" bindchange="onOcrTypeChange">
-      <view class="type-picker">
-        <text>{{currentOcrTypeName}}</text>
-        <text class="arrow">▼</text>
-      </view>
-    </picker>
-  </view>
-
   <!-- 上传区域 -->
   <view wx:if="{{status === 'idle'}}" class="upload-section">
     <view class="upload-area" bindtap="onChooseImage">
       <view class="upload-icon">📷</view>
       <text class="upload-text">点击上传课程表照片</text>
-      <text class="upload-hint">支持 JPG、PNG 格式</text>
+      <text class="upload-hint">支持 JPG、PNG 格式，拍照或从相册选择</text>
     </view>
   </view>
 
@@ -32,23 +21,48 @@
     </view>
   </view>
 
-  <!-- 识别成功 -->
+  <!-- 保存中 -->
+  <view wx:if="{{status === 'saving'}}" class="status-section">
+    <view class="loading-box">
+      <view class="spinner"></view>
+      <text class="status-text">正在保存课程...</text>
+    </view>
+  </view>
+
+  <!-- 识别成功 - 课程预览 -->
   <view wx:if="{{status === 'success'}}" class="result-section">
     <view class="success-box">
       <view class="success-icon">✓</view>
-      <text class="success-text">识别成功</text>
+      <text class="success-text">识别到 {{parsedCourses.length}} 门课程</text>
     </view>
 
-    <view class="result-preview">
-      <text class="preview-label">识别结果预览</text>
+    <!-- 解析出的课程列表 -->
+    <view wx:if="{{parsedCourses.length > 0}}" class="course-preview-list">
+      <text class="preview-label">课程预览（确认后导入）</text>
+      <view class="course-preview-item" wx:for="{{parsedCourses}}" wx:key="index">
+        <view class="preview-name">{{item.course_name}}</view>
+        <view class="preview-detail">
+          <text wx:if="{{item.teacher_name}}">{{item.teacher_name}}</text>
+          <text wx:if="{{item.classroom}}"> | {{item.classroom}}</text>
+        </view>
+        <view class="preview-time">
+          <text>周{{item.weekdayName}} 第{{item.start_section}}-{{item.end_section}}节</text>
+          <text> | {{item.start_week}}-{{item.end_week}}周</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 无法解析时显示原始文本 -->
+    <view wx:if="{{parsedCourses.length === 0}}" class="result-preview">
+      <text class="preview-label">识别原文（未能自动解析为课程）</text>
       <view class="preview-content">
-        <text>{{recognizedText || '课程数据已解析'}}</text>
+        <text>{{recognizedText}}</text>
       </view>
     </view>
 
     <view class="action-buttons">
       <button class="btn-secondary" bindtap="onChooseImage">重新拍照</button>
-      <button class="btn-primary" bindtap="onConfirm">确认导入</button>
+      <button class="btn-primary" bindtap="onConfirm" wx:if="{{parsedCourses.length > 0}}">确认导入 ({{parsedCourses.length}}门)</button>
     </view>
   </view>
 
@@ -59,14 +73,6 @@
       <text class="error-text">识别失败</text>
       <text class="error-hint" wx:if="{{errorMsg}}">{{errorMsg}}</text>
       <button class="btn-retry" bindtap="onRetry">重新上传</button>
-    </view>
-  </view>
-
-  <!-- 快捷入口 -->
-  <view class="quick-actions">
-    <view class="action-item" bindtap="goToSettings">
-      <text class="action-icon">⚙️</text>
-      <text class="action-text">API 设置</text>
     </view>
   </view>
 </view>

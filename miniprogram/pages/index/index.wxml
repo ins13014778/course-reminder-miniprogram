@@ -2,7 +2,7 @@
   <!-- 顶部栏 -->
   <view class="top-bar">
     <view class="user-info">
-      <image class="avatar" src="{{user.avatar}}" wx:if="{{user.avatar}}" />
+      <image class="avatar" src="{{user.avatar_url || user.avatar}}" wx:if="{{user.avatar_url || user.avatar}}" />
       <view class="avatar-placeholder" wx:else>👤</view>
       <view class="welcome">
         <text class="greeting">欢迎回来，</text>
@@ -35,7 +35,7 @@
   <view class="courses-section">
     <view class="section-header">
       <text class="title">今日课程</text>
-      <text class="weekday-text">周一</text>
+      <text class="weekday-text">{{weekdayText}}</text>
     </view>
 
     <view wx:if="{{todayCourses.length > 0}}" class="course-list">
@@ -90,10 +90,10 @@
   <view class="progress-section">
     <view class="progress-header">
       <text class="title">学期进度</text>
-      <text class="week-info">第 8 / 18 周</text>
+      <text class="week-info">第 {{currentWeek}} / {{totalWeeks}} 周</text>
     </view>
     <view class="progress-bar">
-      <view class="progress-fill" style="width: 45%"></view>
+      <view class="progress-fill" style="width: {{currentWeek / totalWeeks * 100}}%"></view>
     </view>
   </view>
 </view>
