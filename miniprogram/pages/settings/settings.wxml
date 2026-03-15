@@ -1,12 +1,49 @@
-<view class="container">
-  <view class="title">提醒设置</view>
-
-  <view class="setting-item">
-    <text class="label">提前提醒时间</text>
-    <picker mode="selector" range="{{[5, 10, 15, 30]}}" value="{{remindMinutes}}" bindchange="onMinutesChange">
-      <view class="picker">{{remindMinutes}}分钟</view>
-    </picker>
+<view class="page-shell">
+  <view class="hero-card">
+    <text class="eyebrow">REMINDER</text>
+    <text class="hero-title">提醒设置</text>
+    <text class="hero-sub">把提醒时间调成适合你的节奏，课前会更从容。</text>
   </view>
 
-  <button type="primary" bindtap="onSave">保存设置</button>
+  <view class="settings-card">
+    <view class="setting-row">
+      <view class="copy-block">
+        <text class="setting-title">启用课程提醒</text>
+        <text class="setting-desc">关闭后不会再收到课前提醒。</text>
+      </view>
+      <switch checked="{{remindEnabled}}" color="#c96f3b" bindchange="onToggleEnabled" />
+    </view>
+
+    <view class="setting-row stacked">
+      <view class="copy-block">
+        <text class="setting-title">提前提醒时间</text>
+        <text class="setting-desc">选择上课前多久提醒你。</text>
+      </view>
+      <picker mode="selector" range="{{remindOptions}}" value="{{remindMinutesIndex}}" bindchange="onMinutesChange">
+        <view class="picker-card">
+          <text class="picker-value">{{remindMinutes}} 分钟</text>
+          <text class="picker-arrow">›</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="setting-row">
+      <view class="copy-block">
+        <text class="setting-title">周末课程也提醒</text>
+        <text class="setting-desc">如果周六周日也有课，可以一起开启。</text>
+      </view>
+      <switch checked="{{remindWeekends}}" color="#1e3b2f" bindchange="onToggleWeekends" />
+    </view>
+  </view>
+
+  <view class="preview-card">
+    <text class="preview-label">当前预览</text>
+    <text class="preview-title" wx:if="{{remindEnabled}}">将在上课前 {{remindMinutes}} 分钟提醒你</text>
+    <text class="preview-title" wx:else>当前已关闭课程提醒</text>
+    <text class="preview-sub" wx:if="{{remindEnabled && remindWeekends}}">工作日和周末课程都会提醒。</text>
+    <text class="preview-sub" wx:elif="{{remindEnabled}}">仅工作日课程参与提醒。</text>
+    <text class="preview-sub" wx:else>你仍然可以随时回来重新开启。</text>
+  </view>
+
+  <button class="save-btn" bindtap="onSave">保存设置</button>
 </view>

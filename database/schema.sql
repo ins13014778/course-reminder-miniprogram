@@ -1,13 +1,14 @@
 -- 用户表
 CREATE TABLE `users` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `openid` VARCHAR(64) NOT NULL UNIQUE COMMENT '微信openid',
-  `unionid` VARCHAR(64) DEFAULT NULL COMMENT '微信unionid',
-  `nickname` VARCHAR(100) DEFAULT NULL COMMENT '昵称',
-  `avatar` VARCHAR(500) DEFAULT NULL COMMENT '头像URL',
-  `school_name` VARCHAR(100) DEFAULT NULL COMMENT '学校名称',
-  `major` VARCHAR(100) DEFAULT NULL COMMENT '专业',
-  `grade` VARCHAR(20) DEFAULT NULL COMMENT '年级',
+  `openid` VARCHAR(100) NOT NULL UNIQUE COMMENT '微信 openid',
+  `nickname` VARCHAR(100) DEFAULT NULL COMMENT '用户名',
+  `signature` VARCHAR(255) DEFAULT '' COMMENT '个性签名',
+  `avatar_url` VARCHAR(500) DEFAULT NULL COMMENT '头像 URL',
+  `_openid` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '云开发 openid',
+  `school` VARCHAR(100) DEFAULT '' COMMENT '学校',
+  `major` VARCHAR(100) DEFAULT '' COMMENT '专业',
+  `grade` VARCHAR(50) DEFAULT '' COMMENT '年级',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX `idx_openid` (`openid`)
@@ -16,9 +17,9 @@ CREATE TABLE `users` (
 -- 导入任务表
 CREATE TABLE `import_tasks` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
-  `image_url` VARCHAR(500) NOT NULL COMMENT '课程表图片URL',
-  `ocr_result` TEXT COMMENT 'OCR识别原始结果',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '用户 ID',
+  `image_url` VARCHAR(500) NOT NULL COMMENT '课表图片 URL',
+  `ocr_result` TEXT COMMENT 'OCR 原始结果',
   `parsed_data` JSON COMMENT '解析后的课程数据',
   `status` ENUM('pending', 'processing', 'success', 'failed') DEFAULT 'pending' COMMENT '任务状态',
   `error_msg` TEXT COMMENT '错误信息',
@@ -31,7 +32,7 @@ CREATE TABLE `import_tasks` (
 -- 课程表
 CREATE TABLE `courses` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '用户 ID',
   `course_name` VARCHAR(100) NOT NULL COMMENT '课程名称',
   `teacher_name` VARCHAR(50) DEFAULT NULL COMMENT '教师姓名',
   `classroom` VARCHAR(100) DEFAULT NULL COMMENT '教室',
@@ -50,8 +51,8 @@ CREATE TABLE `courses` (
 -- 提醒记录表
 CREATE TABLE `reminders` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
-  `course_id` BIGINT UNSIGNED NOT NULL COMMENT '课程ID',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '用户 ID',
+  `course_id` BIGINT UNSIGNED NOT NULL COMMENT '课程 ID',
   `remind_time` DATETIME NOT NULL COMMENT '提醒时间',
   `status` ENUM('pending', 'sent', 'failed') DEFAULT 'pending' COMMENT '发送状态',
   `error_msg` TEXT COMMENT '错误信息',

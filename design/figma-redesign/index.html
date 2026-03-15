@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Course Reminder Redesign</title>
+  <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+  <style>
+    :root {
+      --paper: #f6f1e8;
+      --paper-strong: #efe6d6;
+      --ink: #1e3b2f;
+      --ink-soft: #526257;
+      --accent: #c96f3b;
+      --accent-soft: #e7c5b1;
+      --mint: #2e6b5b;
+      --line: rgba(30, 59, 47, 0.12);
+      --card: rgba(255, 251, 245, 0.92);
+      --shadow: 0 30px 80px rgba(53, 44, 30, 0.14);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      background:
+        radial-gradient(circle at top left, rgba(201, 111, 59, 0.18), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(46, 107, 91, 0.16), transparent 30%),
+        linear-gradient(180deg, #fbf7ef 0%, #f3ecdf 100%);
+      color: var(--ink);
+    }
+
+    .board {
+      min-height: 100vh;
+      padding: 42px;
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 28px;
+    }
+
+    .intro {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      padding: 28px 24px;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: rgba(255, 251, 245, 0.72);
+      backdrop-filter: blur(14px);
+      box-shadow: var(--shadow);
+      align-self: start;
+      position: sticky;
+      top: 24px;
+    }
+
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .intro h1 {
+      margin: 0;
+      font-size: 54px;
+      line-height: 0.94;
+      font-weight: 700;
+    }
+
+    .intro p {
+      margin: 0;
+      font-family: sans-serif;
+      font-size: 14px;
+      line-height: 1.8;
+      color: var(--ink-soft);
+    }
+
+    .swatches,
+    .notes {
+      display: grid;
+      gap: 12px;
+    }
+
+    .swatch-row,
+    .note {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: sans-serif;
+      font-size: 13px;
+      color: var(--ink-soft);
+    }
+
+    .swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      flex-shrink: 0;
+    }
+
+    .screens {
+      position: relative;
+      min-height: 900px;
+      border-radius: 36px;
+      border: 1px solid rgba(30, 59, 47, 0.08);
+      background:
+        linear-gradient(140deg, rgba(255,255,255,0.5), rgba(255,255,255,0.12)),
+        linear-gradient(180deg, rgba(255,248,238,0.95), rgba(239,230,214,0.9));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      padding: 36px;
+    }
+
+    .grain {
+      position: absolute;
+      inset: 0;
+      opacity: 0.08;
+      background-image:
+        radial-gradient(#1e3b2f 0.5px, transparent 0.5px),
+        radial-gradient(#c96f3b 0.5px, transparent 0.5px);
+      background-position: 0 0, 18px 18px;
+      background-size: 24px 24px;
+      pointer-events: none;
+    }
+
+    .phones {
+      position: relative;
+      height: 100%;
+      min-height: 830px;
+    }
+
+    .phone {
+      position: absolute;
+      width: 280px;
+      height: 600px;
+      border-radius: 34px;
+      padding: 18px;
+      background: #fbf7f0;
+      border: 1px solid rgba(30, 59, 47, 0.16);
+      box-shadow: 0 28px 55px rgba(30, 59, 47, 0.16);
+      overflow: hidden;
+    }
+
+    .phone::before {
+      content: "";
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 108px;
+      height: 24px;
+      border-radius: 999px;
+      background: #161616;
+    }
+
+    .screen {
+      height: 100%;
+      margin-top: 18px;
+      border-radius: 24px;
+      background:
+        radial-gradient(circle at top right, rgba(201, 111, 59, 0.10), transparent 24%),
+        linear-gradient(180deg, #fffaf3 0%, #f5eee3 100%);
+      padding: 22px 18px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .p1 { top: 12px; left: 26px; transform: rotate(-4deg); }
+    .p2 { top: 88px; left: 278px; transform: rotate(3deg); }
+    .p3 { top: 330px; left: 112px; transform: rotate(-2deg); }
+    .p4 { top: 372px; left: 382px; transform: rotate(4deg); }
+
+    .status,
+    .nav-mini {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: sans-serif;
+      font-size: 11px;
+      color: var(--ink-soft);
+    }
+
+    .hero-card,
+    .profile-card,
+    .import-card,
+    .course-card {
+      border-radius: 22px;
+      background: var(--card);
+      border: 1px solid rgba(30, 59, 47, 0.08);
+      box-shadow: 0 18px 34px rgba(54, 45, 32, 0.08);
+    }
+
+    .hero-card {
+      padding: 18px;
+      background: linear-gradient(160deg, #1e3b2f 0%, #294d3e 100%);
+      color: #fff8ef;
+    }
+
+    .hero-card h3,
+    .section-title,
+    .profile-name,
+    .course-title,
+    .import-title {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.05;
+    }
+
+    .hero-card p,
+    .mini-text,
+    .profile-sub,
+    .course-sub,
+    .import-sub {
+      margin: 0;
+      font-family: sans-serif;
+      font-size: 12px;
+      line-height: 1.65;
+      color: inherit;
+      opacity: 0.82;
+    }
+
+    .strip {
+      display: flex;
+      gap: 8px;
+      overflow: hidden;
+    }
+
+    .pill {
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(30, 59, 47, 0.06);
+      font-family: sans-serif;
+      font-size: 11px;
+      color: var(--ink-soft);
+      white-space: nowrap;
+    }
+
+    .pill.active {
+      background: var(--ink);
+      color: #fffaf3;
+    }
+
+    .section {
+      display: grid;
+      gap: 12px;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .section-title {
+      font-size: 18px;
+    }
+
+    .ghost {
+      font-family: sans-serif;
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .schedule-item {
+      display: grid;
+      grid-template-columns: 54px 1fr;
+      gap: 12px;
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid rgba(30, 59, 47, 0.08);
+    }
+
+    .time-box {
+      border-radius: 14px;
+      background: #efe6d6;
+      padding: 10px 6px;
+      text-align: center;
+      font-family: sans-serif;
+      font-size: 11px;
+      color: var(--ink-soft);
+    }
+
+    .time-box strong {
+      display: block;
+      font-size: 12px;
+      color: var(--ink);
+    }
+
+    .action-row {
+      display: grid;
+      grid-template-columns: 1.25fr 1fr;
+      gap: 10px;
+    }
+
+    .cta,
+    .minor {
+      border-radius: 16px;
+      padding: 14px;
+      border: none;
+      font-family: sans-serif;
+      font-size: 13px;
+    }
+
+    .cta {
+      background: var(--accent);
+      color: #fff7ef;
+    }
+
+    .minor {
+      background: rgba(30, 59, 47, 0.06);
+      color: var(--ink);
+    }
+
+    .progress {
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(30, 59, 47, 0.12);
+      overflow: hidden;
+    }
+
+    .progress > span {
+      display: block;
+      width: 58%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent), #da8c54);
+    }
+
+    .courses-wrap {
+      display: grid;
+      gap: 10px;
+    }
+
+    .course-card {
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .course-head,
+    .profile-head,
+    .import-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .course-meta-row,
+    .line,
+    .info-grid {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-family: sans-serif;
+      font-size: 11px;
+      color: var(--ink-soft);
+    }
+
+    .tiny {
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: #efe6d6;
+    }
+
+    .profile-card {
+      padding: 16px;
+      background: linear-gradient(160deg, #1e3b2f 0%, #274939 100%);
+      color: #fffaf3;
+    }
+
+    .avatar-dot {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: linear-gradient(180deg, #f3ece0, #d8ccb7);
+      flex-shrink: 0;
+    }
+
+    .profile-panel {
+      border-radius: 20px;
+      background: rgba(255, 251, 245, 0.92);
+      border: 1px solid rgba(30, 59, 47, 0.08);
+      overflow: hidden;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(30, 59, 47, 0.08);
+      font-family: sans-serif;
+      font-size: 12px;
+    }
+
+    .row:last-child {
+      border-bottom: none;
+    }
+
+    .import-card {
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .upload-stage {
+      border-radius: 18px;
+      min-height: 158px;
+      padding: 16px;
+      border: 1px dashed rgba(30, 59, 47, 0.2);
+      background: linear-gradient(180deg, rgba(233, 223, 201, 0.55), rgba(255, 251, 245, 0.72));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-family: sans-serif;
+      font-size: 13px;
+      color: var(--ink-soft);
+    }
+
+    .footer-nav {
+      margin-top: auto;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      padding-top: 4px;
+      font-family: sans-serif;
+      font-size: 11px;
+      color: var(--ink-soft);
+    }
+
+    .footer-nav .active {
+      color: var(--ink);
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <main class="board">
+    <aside class="intro">
+      <div class="eyebrow">Course Reminder UI Redesign</div>
+      <h1>课程提醒
+        <br />重设计稿
+      </h1>
+      <p>围绕首页、课表、导入、我的四个核心页面，改成更像正式产品的杂志式校园界面。保留功能密度，但把气质从“默认小程序”提到“有品牌的工具产品”。</p>
+
+      <div class="swatches">
+        <div class="swatch-row"><span class="swatch" style="background:#F6F1E8"></span><span>Paper / #F6F1E8</span></div>
+        <div class="swatch-row"><span class="swatch" style="background:#1E3B2F"></span><span>Ink / #1E3B2F</span></div>
+        <div class="swatch-row"><span class="swatch" style="background:#C96F3B"></span><span>Accent / #C96F3B</span></div>
+        <div class="swatch-row"><span class="swatch" style="background:#2E6B5B"></span><span>Mint / #2E6B5B</span></div>
+      </div>
+
+      <div class="notes">
+        <div class="note">布局关键词: 非对称、叠放设备、暖白纸张感、深绿主色</div>
+        <div class="note">交互重点: 今日课程更突出，课表编辑更轻，个人页更完整</div>
+        <div class="note">底部导航: 统一低饱和图形化风格，不再使用表情图标</div>
+      </div>
+    </aside>
+
+    <section class="screens">
+      <div class="grain"></div>
+      <div class="phones">
+        <article class="phone p1">
+          <div class="screen">
+            <div class="status"><span>09:41</span><span>课程提醒</span></div>
+            <div class="hero-card">
+              <div class="ghost">Today Focus</div>
+              <h3>今天不是赶课，
+                <br />是掌控节奏。
+              </h3>
+              <p>根据当前周次和星期，优先给出最重要的课程信息。</p>
+            </div>
+            <div class="strip">
+              <span class="pill active">第 1 周</span>
+              <span class="pill">第 2 周</span>
+              <span class="pill">第 3 周</span>
+              <span class="pill">第 4 周</span>
+            </div>
+            <div class="section">
+              <div class="section-head">
+                <h4 class="section-title">今日课程</h4>
+                <span class="ghost">周三</span>
+              </div>
+              <div class="schedule-item">
+                <div class="time-box"><strong>08:00</strong>10:00</div>
+                <div>
+                  <div class="course-title">高等数学</div>
+                  <p class="course-sub">李敏 · 教学楼 A302</p>
+                </div>
+              </div>
+              <div class="schedule-item">
+                <div class="time-box"><strong>14:00</strong>15:40</div>
+                <div>
+                  <div class="course-title">大学英语</div>
+                  <p class="course-sub">王晨 · 2 号多媒体教室</p>
+                </div>
+              </div>
+            </div>
+            <div class="action-row">
+              <button class="cta">导入课表</button>
+              <button class="minor">手动添加</button>
+            </div>
+            <div class="section">
+              <div class="section-head">
+                <h4 class="section-title">学期进度</h4>
+                <span class="ghost">1 / 18</span>
+              </div>
+              <div class="progress"><span></span></div>
+            </div>
+            <div class="footer-nav">
+              <span class="active">首页</span>
+              <span>课表</span>
+              <span>导入</span>
+              <span>我的</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="phone p2">
+          <div class="screen">
+            <div class="status"><span>09:41</span><span>课表</span></div>
+            <div class="strip">
+              <span class="pill">周一</span>
+              <span class="pill active">周二</span>
+              <span class="pill">周三</span>
+              <span class="pill">周四</span>
+              <span class="pill">周五</span>
+            </div>
+            <div class="section-head">
+              <h4 class="section-title">周二课程</h4>
+              <span class="ghost">3 门</span>
+            </div>
+            <div class="courses-wrap">
+              <div class="course-card">
+                <div class="course-head">
+                  <div>
+                    <h4 class="course-title">人工智能基础</h4>
+                    <p class="course-sub">上午 · 第 1-2 节</p>
+                  </div>
+                  <span class="tiny">08:00-09:40</span>
+                </div>
+                <div class="course-meta-row">
+                  <span>王春香</span>
+                  <span>实训楼 1 / 万</span>
+                  <span>第 1-18 周</span>
+                </div>
+              </div>
+              <div class="course-card">
+                <div class="course-head">
+                  <div>
+                    <h4 class="course-title">创新创业教育</h4>
+                    <p class="course-sub">上午 · 第 3-4 节</p>
+                  </div>
+                  <span class="tiny">10:00-11:40</span>
+                </div>
+                <div class="course-meta-row">
+                  <span>李敏</span>
+                  <span>2 号多媒体</span>
+                  <span>第 1-18 周</span>
+                </div>
+              </div>
+              <div class="course-card">
+                <div class="course-head">
+                  <div>
+                    <h4 class="course-title">形势与政策</h4>
+                    <p class="course-sub">下午 · 第 5-6 节</p>
+                  </div>
+                  <span class="tiny">14:00-15:40</span>
+                </div>
+                <div class="course-meta-row">
+                  <span>待定</span>
+                  <span>阶梯教室</span>
+                  <span>第 5-8 周</span>
+                </div>
+              </div>
+            </div>
+            <div class="footer-nav">
+              <span>首页</span>
+              <span class="active">课表</span>
+              <span>导入</span>
+              <span>我的</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="phone p3">
+          <div class="screen">
+            <div class="status"><span>09:41</span><span>导入</span></div>
+            <div class="import-card">
+              <div class="import-head">
+                <div>
+                  <h4 class="import-title">拍照导入课表</h4>
+                  <p class="import-sub">网格课表优先，拍完整边框识别更稳定。</p>
+                </div>
+                <span class="tiny">OCR</span>
+              </div>
+              <div class="upload-stage">
+                点击上传课表照片
+                <br />支持拍照或从相册选择
+              </div>
+              <div class="info-grid">
+                <span class="tiny">JPG / PNG</span>
+                <span class="tiny">支持裁切</span>
+                <span class="tiny">导入前预览</span>
+              </div>
+            </div>
+            <div class="course-card">
+              <div class="course-head">
+                <div>
+                  <h4 class="course-title">识别预览</h4>
+                  <p class="course-sub">识别完成后先确认，再导入课程</p>
+                </div>
+                <span class="tiny">12 门</span>
+              </div>
+              <div class="course-meta-row">
+                <span>周一 · 高等数学</span>
+                <span>周二 · 创新创业教育</span>
+                <span>周三 · 大学体育</span>
+              </div>
+            </div>
+            <div class="action-row">
+              <button class="cta">开始识别</button>
+              <button class="minor">查看示例</button>
+            </div>
+            <div class="footer-nav">
+              <span>首页</span>
+              <span>课表</span>
+              <span class="active">导入</span>
+              <span>我的</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="phone p4">
+          <div class="screen">
+            <div class="status"><span>09:41</span><span>我的</span></div>
+            <div class="profile-card">
+              <div class="profile-head">
+                <div style="display:flex; gap:12px;">
+                  <div class="avatar-dot"></div>
+                  <div>
+                    <div class="profile-name">微信用户</div>
+                    <p class="profile-sub">郑州幼儿师范专科</p>
+                  </div>
+                </div>
+                <span class="tiny" style="background:rgba(255,255,255,0.14); color:#fffaf3;">可编辑</span>
+              </div>
+              <div class="signature-card" style="margin-top:14px;">
+                <div class="signature-label">个性签名</div>
+                <div class="signature-text">把每节课都过得更从容一点。</div>
+              </div>
+            </div>
+            <div class="profile-panel">
+              <div class="row"><span>用户名</span><span>微信用户</span></div>
+              <div class="row"><span>自定义头像</span><span>点击更换</span></div>
+              <div class="row"><span>学校</span><span>郑州幼儿师范专科</span></div>
+              <div class="row"><span>专业</span><span>人工智能</span></div>
+              <div class="row"><span>年级</span><span>1</span></div>
+            </div>
+            <div class="profile-panel">
+              <div class="row"><span>提醒设置</span><span>提前 20 分钟</span></div>
+              <div class="row"><span>通知管理</span><span>已开启</span></div>
+              <div class="row"><span>关于我们</span><span>课程提醒</span></div>
+            </div>
+            <button class="minor" style="background:#fff1ea; color:#b65429;">退出登录</button>
+            <div class="footer-nav">
+              <span>首页</span>
+              <span>课表</span>
+              <span>导入</span>
+              <span class="active">我的</span>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

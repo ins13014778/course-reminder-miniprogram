@@ -1,98 +1,80 @@
-<view class="container">
-  <view class="header">
-    <text class="title">导入课表</text>
+<view class="page-shell">
+  <view class="headline-card">
+    <text class="eyebrow">OCR IMPORT</text>
+    <text class="headline-title">拍照导入课表</text>
+    <text class="headline-sub">尽量拍到完整边框和网格，识别会更稳。</text>
   </view>
 
-  <!-- 上传区域 -->
-  <view wx:if="{{status === 'idle'}}" class="upload-section">
-    <view class="upload-area" bindtap="onChooseImage">
-      <view class="upload-icon">📷</view>
-      <text class="upload-text">点击上传课程表照片</text>
-      <text class="upload-hint">支持 JPG、PNG 格式，拍照或从相册选择</text>
-    </view>
+  <view wx:if="{{status === 'idle'}}" class="upload-card" bindtap="onChooseImage">
+    <text class="upload-mark">SCAN</text>
+    <text class="upload-title">点击上传课程表照片</text>
+    <text class="upload-sub">支持拍照或从相册选择，导入前会先给你预览。</text>
   </view>
 
-  <!-- 上传中 -->
-  <view wx:if="{{status === 'uploading'}}" class="status-section">
-    <view class="loading-box">
-      <view class="spinner"></view>
-      <text class="status-text">正在识别课程表...</text>
-      <text class="status-hint">请稍候</text>
-    </view>
+  <view wx:if="{{status === 'uploading' || status === 'parsing' || status === 'saving'}}" class="status-card">
+    <view class="spinner"></view>
+    <text class="status-title" wx:if="{{status === 'uploading'}}">正在识别课表...</text>
+    <text class="status-title" wx:if="{{status === 'parsing'}}">正在整理课程信息...</text>
+    <text class="status-title" wx:if="{{status === 'saving'}}">正在保存课程...</text>
+    <text class="status-sub">请稍候，这一步通常只需要几秒钟。</text>
   </view>
 
-  <!-- 保存中 -->
-  <view wx:if="{{status === 'saving'}}" class="status-section">
-    <view class="loading-box">
-      <view class="spinner"></view>
-      <text class="status-text">正在保存课程...</text>
-    </view>
-  </view>
-
-  <!-- 识别成功 - 课程预览 -->
-  <view wx:if="{{status === 'success'}}" class="result-section">
-    <view class="success-box">
-      <view class="success-icon">✓</view>
-      <text class="success-text">识别到 {{parsedCourses.length}} 门课程</text>
+  <view wx:if="{{status === 'success'}}" class="result-stack">
+    <view class="summary-card">
+      <text class="summary-mark">READY</text>
+      <text class="summary-title">识别到 {{parsedCourses.length}} 门课程</text>
+      <text class="summary-sub">先确认内容，再一键导入到你的课表。</text>
     </view>
 
-    <!-- 解析出的课程列表 -->
-    <view wx:if="{{parsedCourses.length > 0}}" class="course-preview-list">
-      <text class="preview-label">课程预览（确认后导入）</text>
-      <view class="course-preview-item" wx:for="{{parsedCourses}}" wx:key="index">
-        <view class="preview-name">{{item.course_name}}</view>
-        <view class="preview-detail">
-          <text wx:if="{{item.teacher_name}}">{{item.teacher_name}}</text>
-          <text wx:if="{{item.classroom}}"> | {{item.classroom}}</text>
-        </view>
-        <view class="preview-time">
-          <text>周{{item.weekdayName}} 第{{item.start_section}}-{{item.end_section}}节</text>
-          <text> | {{item.start_week}}-{{item.end_week}}周</text>
-        </view>
+    <view wx:if="{{parsedCourses.length > 0}}" class="preview-card">
+      <view class="card-head">
+        <text class="card-title">课程预览</text>
+        <text class="card-tag">可导入</text>
+      </view>
+      <view wx:for="{{parsedCourses}}" wx:key="index" class="preview-item">
+        <text class="preview-name">{{item.course_name}}</text>
+        <text class="preview-meta">{{item.teacher_name || '待定教师'}} · {{item.classroom || '待定地点'}}</text>
+        <text class="preview-meta">周{{item.weekdayName}} · 第{{item.start_section}}-{{item.end_section}}节 · 第{{item.start_week}}-{{item.end_week}}周</text>
       </view>
     </view>
 
-    <!-- 无法解析时显示原始文本 -->
-    <view wx:if="{{parsedCourses.length === 0}}" class="result-preview">
-      <text class="preview-label">识别原文（未能自动解析为课程）</text>
-      <view class="preview-content">
-        <text>{{recognizedText}}</text>
+    <view wx:if="{{parsedCourses.length === 0}}" class="preview-card">
+      <view class="card-head">
+        <text class="card-title">识别文本</text>
+        <text class="card-tag">原始结果</text>
       </view>
+      <text class="raw-text">{{recognizedText}}</text>
     </view>
 
-    <view class="action-buttons">
-      <button class="btn-secondary" bindtap="onChooseImage">重新拍照</button>
-      <button class="btn-primary" bindtap="onConfirm" wx:if="{{parsedCourses.length > 0}}">确认导入 ({{parsedCourses.length}}门)</button>
+    <view class="action-row">
+      <view class="cta-button cta-secondary" bindtap="onChooseImage">重新上传</view>
+      <view class="cta-button cta-primary" wx:if="{{parsedCourses.length > 0}}" bindtap="onConfirm">确认导入</view>
     </view>
   </view>
 
-  <!-- 识别失败 -->
-  <view wx:if="{{status === 'failed'}}" class="status-section failed">
-    <view class="error-box">
-      <view class="error-icon">✕</view>
-      <text class="error-text">识别失败</text>
-      <text class="error-hint" wx:if="{{errorMsg}}">{{errorMsg}}</text>
-      <button class="btn-retry" bindtap="onRetry">重新上传</button>
-    </view>
+  <view wx:if="{{status === 'failed'}}" class="status-card failed">
+    <text class="upload-mark">FAIL</text>
+    <text class="status-title">这次识别没有成功</text>
+    <text class="status-sub">{{errorMsg || '你可以重新上传更清晰的课表照片。'}}</text>
+    <view class="cta-button cta-primary solo" bindtap="onRetry">重新上传</view>
   </view>
 </view>
 
-<!-- 底部导航 -->
 <view class="bottom-nav">
   <view class="nav-item" bindtap="goToIndex">
-    <text class="icon">🏠</text>
-    <text class="label">首页</text>
+    <text class="nav-icon">⌂</text>
+    <text class="nav-label">首页</text>
   </view>
   <view class="nav-item" bindtap="goToCourses">
-    <text class="icon">📅</text>
-    <text class="label">课表</text>
+    <text class="nav-icon">▦</text>
+    <text class="nav-label">课表</text>
   </view>
   <view class="nav-item active" bindtap="goToImport">
-    <text class="icon">📷</text>
-    <text class="label">导入</text>
+    <text class="nav-icon">◫</text>
+    <text class="nav-label">导入</text>
   </view>
   <view class="nav-item" bindtap="goToProfile">
-    <text class="icon">👤</text>
-    <text class="label">我的</text>
+    <text class="nav-icon">●</text>
+    <text class="nav-label">我的</text>
   </view>
 </view>

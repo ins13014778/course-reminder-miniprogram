@@ -1,0 +1,142 @@
+[
+  {
+    "weekday": 1,
+    "courseName": "人工智能基础与应用",
+    "startSection": 3,
+    "endSection": 4,
+    "startWeek": 1,
+    "endWeek": 18,
+    "location": "人工智能应用开发2",
+    "teacher": "胡春春"
+  },
+  {
+    "weekday": 1,
+    "courseName": "Python应用开发",
+    "startSection": 5,
+    "endSection": 6,
+    "startWeek": 1,
+    "endWeek": 18,
+    "location": "计算机教室2",
+    "teacher": "吉世杰"
+  },
+  {
+    "weekday": 1,
+    "courseName": "讲课 :实验 :实践 : 上机",
+    "startSection": 9,
+    "endSection": 10,
+    "startWeek": 1,
+    "endWeek": 18,
+    "location": "",
+    "teacher": ""
+  },
+  {
+    "weekday": 2,
+    "courseName": "大学生心理健康教育",
+    "startSection": 1,
+    "endSection": 2,
+    "startWeek": 1,
+    "endWeek": 18,
+    "location": "2#多媒体教室1",
+    "teacher": "李琦"
+  },
+  {
+    "weekday": 2,
+    "courseName": "创新创业教育",
+    "startSection": 3,
+    "endSection": 4,
+    "startWeek": 1,
+    "endWeek": 18,
+    "location": "未排地点",
+    "teacher": "田石磊"
+  },
+  {
+    "weekday": 2,
+    "courseName": "形势与政策 (2)",
+    "startSection": 5,
+    "endSection": 6,
+    "startWeek": 5,
+    "endWeek": 8,
+    "location": "2#多媒体教室1",
+    "teacher": "蔺锐"
+  },
+  {
+    "weekday": 3,
+    "courseName": "计算机视觉应用开发",
+    "startSection": 1,
+    "endSection": 2,
+    "startWeek": 1,
+    "endWeek": 18,
+    "location": "人工智能综合应用实训室1",
+    "teacher": "万志强"
+  },
+  {
+    "weekday": 3,
+    "courseName": "高等数学 (2)",
+    "startSection": 3,
+    "endSection": 4,
+    "startWeek": 1,
+    "endWeek": 18,
+    "location": "未排地点",
+    "teacher": "李敏"
+  },
+  {
+    "weekday": 3,
+    "courseName": "大学体育 (2)",
+    "startSection": 7,
+    "endSection": 8,
+    "startWeek": 1,
+    "endWeek": 18,
+    "location": "未排地点",
+    "teacher": "王茜雅"
+  },
+  {
+    "weekday": 4,
+    "courseName": "大学英语 (2)",
+    "startSection": 1,
+    "endSection": 2,
+    "startWeek": 1,
+    "endWeek": 18,
+    "location": "未排地点",
+    "teacher": "李娜"
+  },
+  {
+    "weekday": 4,
+    "courseName": "人工智能数学基础",
+    "startSection": 3,
+    "endSection": 4,
+    "startWeek": 1,
+    "endWeek": 18,
+    "location": "未排地点",
+    "teacher": "刘小雨"
+  },
+  {
+    "weekday": 5,
+    "courseName": "思想道德与法治 2)",
+    "startSection": 2,
+    "endSection": 2,
+    "startWeek": 1,
+    "endWeek": 18,
+    "location": "l#多媒体教室3",
+    "teacher": ""
+  },
+  {
+    "weekday": 5,
+    "courseName": "大学语文 (2)",
+    "startSection": 3,
+    "endSection": 4,
+    "startWeek": 1,
+    "endWeek": 18,
+    "location": "未排地点",
+    "teacher": "邓丽茹"
+  },
+  {
+    "weekday": 5,
+    "courseName": "计算机视觉应用开发",
+    "startSection": 7,
+    "endSection": 8,
+    "startWeek": 1,
+    "endWeek": 18,
+    "location": "人工智能综合应用实训室1",
+    "teacher": ""
+  }
+]

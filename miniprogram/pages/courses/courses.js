@@ -28,11 +28,12 @@ function getDefaultSlot(startSection, endSection) {
   for (const group of TIME_SLOT_GROUPS) {
     const found = group.slots.find((slot) => slot.start === startSection && slot.end === endSection);
     if (found) {
-      return { periodLabel: group.label, slot: found };
+      return { periodKey: group.key, periodLabel: group.label, slot: found };
     }
   }
 
   return {
+    periodKey: 'custom',
     periodLabel: '自定义',
     slot: {
       start: startSection || 1,
@@ -48,16 +49,32 @@ function formatCourseForView(course, color) {
   return {
     id: course.id,
     courseName: course.course_name,
-    teacherName: course.teacher,
-    classroom: course.location,
+    teacherName: course.teacher || '',
+    classroom: course.location || '',
     startSection: course.start_section,
     endSection: course.end_section,
     startWeek: course.start_week,
     endWeek: course.end_week,
     color,
+    periodKey: slotInfo.periodKey,
     periodLabel: slotInfo.periodLabel,
     timeLabel: slotInfo.slot.time,
     sectionLabel: slotInfo.slot.label
+  };
+}
+
+function createEditorState(course) {
+  const slotInfo = getDefaultSlot(course ? course.startSection : 1, course ? course.endSection : 2);
+  return {
+    id: course ? course.id : null,
+    courseName: course ? course.courseName : '',
+    teacherName: course ? course.teacherName : '',
+    classroom: course ? course.classroom : '',
+    periodKey: slotInfo.periodKey === 'custom' ? 'morning' : slotInfo.periodKey,
+    startSection: slotInfo.slot.start,
+    endSection: slotInfo.slot.end,
+    startWeek: course ? course.startWeek : 1,
+    endWeek: course ? course.endWeek : 18
   };
 }
 
@@ -67,12 +84,16 @@ Page({
     courses: [],
     loading: false,
     isLoggedIn: false,
-    colors: ['#4F46E5', '#07c160', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
+    colors: ['#C96F3B', '#2E6B5B', '#7A6854', '#B65429', '#476356', '#8C7B68'],
+    periodGroups: TIME_SLOT_GROUPS,
+    editorVisible: false,
+    editorMode: 'add',
+    editorTitle: '添加课程',
+    editorCourse: createEditorState(null)
   },
 
   onLoad() {
-    const now = new Date();
-    const weekday = now.getDay() || 7;
+    const weekday = new Date().getDay() || 7;
     this.setData({ selectedWeekday: weekday });
     this.loadCourses();
   },
@@ -82,8 +103,7 @@ Page({
   },
 
   onWeekdayChange(e) {
-    const weekday = Number(e.currentTarget.dataset.weekday);
-    this.setData({ selectedWeekday: weekday });
+    this.setData({ selectedWeekday: Number(e.currentTarget.dataset.weekday) });
     this.loadCourses();
   },
 
@@ -105,7 +125,10 @@ Page({
 
     wx.cloud.callFunction({
       name: 'db-query',
-      data: { sql: 'SELECT id FROM users WHERE openid = ? LIMIT 1', params: [token] },
+      data: {
+        sql: 'SELECT id FROM users WHERE openid = ? LIMIT 1',
+        params: [token]
+      },
       success: (res) => {
         const result = res.result;
         if (result && result.success && result.data && result.data.length > 0) {
@@ -122,7 +145,6 @@ Page({
 
   fetchCourses(userId) {
     this.setData({ loading: true });
-
     wx.cloud.callFunction({
       name: 'db-query',
       data: {
@@ -140,8 +162,7 @@ Page({
           this.setData({ courses: [], loading: false });
         }
       },
-      fail: (err) => {
-        console.error('[Courses] load failed:', err);
+      fail: () => {
         this.setData({ courses: [], loading: false });
         wx.showToast({ title: '加载失败', icon: 'none' });
       }
@@ -149,8 +170,7 @@ Page({
   },
 
   onCourseClick(e) {
-    const course = e.currentTarget.dataset.course;
-    this.showCourseEditor(course);
+    this.openEditor(e.currentTarget.dataset.course, 'edit');
   },
 
   onAddCourse() {
@@ -158,101 +178,75 @@ Page({
       wx.showToast({ title: '请先登录', icon: 'none' });
       return;
     }
-    this.showCourseEditor(null);
+    this.openEditor(null, 'add');
   },
 
-  showCourseEditor(course) {
-    const isEdit = !!course;
-    wx.showModal({
-      title: isEdit ? '修改课程名称' : '添加课程',
-      editable: true,
-      placeholderText: '例如：高等数学',
-      content: course ? course.courseName : '',
-      success: (res) => {
-        if (!res.confirm) return;
-        const courseName = (res.content || '').trim();
-        if (!courseName) {
-          wx.showToast({ title: '请输入课程名称', icon: 'none' });
-          return;
-        }
-        this.showTeacherInput(courseName, course);
-      }
+  openEditor(course, mode) {
+    this.setData({
+      editorVisible: true,
+      editorMode: mode,
+      editorTitle: mode === 'edit' ? '修改课程' : '添加课程',
+      editorCourse: createEditorState(course)
     });
   },
 
-  showTeacherInput(courseName, course) {
-    wx.showModal({
-      title: '教师姓名',
-      editable: true,
-      placeholderText: '可不填',
-      content: course ? (course.teacherName || '') : '',
-      success: (res) => {
-        if (!res.confirm) return;
-        this.showClassroomInput(courseName, (res.content || '').trim(), course);
-      }
+  closeEditor() {
+    this.setData({ editorVisible: false });
+  },
+
+  onEditorFieldChange(e) {
+    const field = e.currentTarget.dataset.field;
+    this.setData({ [`editorCourse.${field}`]: e.detail.value });
+  },
+
+  onPeriodChange(e) {
+    const group = TIME_SLOT_GROUPS.find((item) => item.key === e.currentTarget.dataset.period);
+    if (!group) return;
+    const slot = group.slots[0];
+    this.setData({
+      'editorCourse.periodKey': group.key,
+      'editorCourse.startSection': slot.start,
+      'editorCourse.endSection': slot.end
     });
   },
 
-  showClassroomInput(courseName, teacher, course) {
-    wx.showModal({
-      title: '上课地点',
-      editable: true,
-      placeholderText: '例如：2#多媒体教室',
-      content: course ? (course.classroom || '') : '',
-      success: (res) => {
-        if (!res.confirm) return;
-        this.showPeriodPicker(courseName, teacher, (res.content || '').trim(), course);
-      }
+  onSlotChange(e) {
+    this.setData({
+      'editorCourse.startSection': Number(e.currentTarget.dataset.start),
+      'editorCourse.endSection': Number(e.currentTarget.dataset.end)
     });
   },
 
-  showPeriodPicker(courseName, teacher, classroom, course) {
-    wx.showActionSheet({
-      itemList: TIME_SLOT_GROUPS.map((group) => `${group.label}时段`),
-      success: (res) => {
-        const group = TIME_SLOT_GROUPS[res.tapIndex];
-        if (!group) return;
-        this.showTimeSlotPicker(courseName, teacher, classroom, group, course);
-      }
-    });
-  },
+  saveEditorCourse() {
+    const editor = this.data.editorCourse;
+    const courseName = String(editor.courseName || '').trim();
+    const teacher = String(editor.teacherName || '').trim();
+    const classroom = String(editor.classroom || '').trim();
+    const startWeek = parseInt(editor.startWeek, 10) || 1;
+    const endWeek = parseInt(editor.endWeek, 10) || 18;
+    const startSection = parseInt(editor.startSection, 10) || 1;
+    const endSection = parseInt(editor.endSection, 10) || 2;
 
-  showTimeSlotPicker(courseName, teacher, classroom, group, course) {
-    wx.showActionSheet({
-      itemList: group.slots.map((slot) => `${slot.label} ${slot.time}`),
-      success: (res) => {
-        const slot = group.slots[res.tapIndex];
-        if (!slot) return;
-        this.showWeekInput(courseName, teacher, classroom, slot.start, slot.end, course);
-      }
-    });
-  },
+    if (!courseName) {
+      wx.showToast({ title: '请输入课程名称', icon: 'none' });
+      return;
+    }
 
-  showWeekInput(courseName, teacher, classroom, startSection, endSection, course) {
-    wx.showModal({
-      title: '周次范围',
-      editable: true,
-      placeholderText: '例如：1-18',
-      content: course ? `${course.startWeek}-${course.endWeek}` : '1-18',
-      success: (res) => {
-        if (!res.confirm) return;
-        const match = String(res.content || '').match(/(\d+)-(\d+)/);
-        const startWeek = match ? parseInt(match[1], 10) : 1;
-        const endWeek = match ? parseInt(match[2], 10) : 18;
+    if (startWeek > endWeek) {
+      wx.showToast({ title: '周次范围不正确', icon: 'none' });
+      return;
+    }
 
-        if (course) {
-          this.updateCourse(course.id, courseName, teacher, classroom, startSection, endSection, startWeek, endWeek);
-        } else {
-          this.addCourse(courseName, teacher, classroom, startSection, endSection, startWeek, endWeek);
-        }
-      }
-    });
+    if (editor.id) {
+      this.updateCourse(editor.id, courseName, teacher, classroom, startSection, endSection, startWeek, endWeek);
+    } else {
+      this.addCourse(courseName, teacher, classroom, startSection, endSection, startWeek, endWeek);
+    }
   },
 
   addCourse(courseName, teacher, classroom, startSection, endSection, startWeek, endWeek) {
     const user = wx.getStorageSync('user');
     const token = wx.getStorageSync('token');
-
     wx.showLoading({ title: '添加中...' });
     wx.cloud.callFunction({
       name: 'db-query',
@@ -263,6 +257,7 @@ Page({
       success: (res) => {
         wx.hideLoading();
         if (res.result && res.result.success) {
+          this.setData({ editorVisible: false });
           wx.showToast({ title: '添加成功', icon: 'success' });
           this.loadCourses();
         } else {
@@ -281,12 +276,13 @@ Page({
     wx.cloud.callFunction({
       name: 'db-query',
       data: {
-        sql: 'UPDATE courses SET course_name=?, teacher=?, location=?, start_section=?, end_section=?, start_week=?, end_week=? WHERE id=?',
+        sql: 'UPDATE courses SET course_name = ?, teacher = ?, location = ?, start_section = ?, end_section = ?, start_week = ?, end_week = ? WHERE id = ?',
         params: [courseName, teacher, classroom, startSection, endSection, startWeek, endWeek, id]
       },
       success: (res) => {
         wx.hideLoading();
         if (res.result && res.result.success) {
+          this.setData({ editorVisible: false });
           wx.showToast({ title: '保存成功', icon: 'success' });
           this.loadCourses();
         } else {
@@ -332,6 +328,7 @@ Page({
     });
   },
 
+  noop() {},
   goToIndex() { wx.navigateTo({ url: '/pages/index/index' }); },
   goToCourses() {},
   goToImport() { wx.navigateTo({ url: '/pages/import/import' }); },

@@ -1,4 +1,34 @@
 <view class="container">
-  <view class="title">课程提醒系统</view>
-  <button class="login-btn" bindtap="onLogin">微信登录</button>
+  <view class="hero-card">
+    <view class="hero-mark">
+      <text class="hero-mark-text">CR</text>
+    </view>
+
+    <view class="hero-copy">
+      <text class="eyebrow">COURSE REMINDER</text>
+      <text class="title">课表提醒，不用再靠记忆硬撑。</text>
+      <text class="desc">登录后可以查看当天课程、导入课表，并在上课前收到提醒。</text>
+    </view>
+
+    <view class="feature-strip">
+      <view class="feature-item">
+        <text class="feature-label">课程</text>
+        <text class="feature-value">按天查看</text>
+      </view>
+      <view class="feature-item">
+        <text class="feature-label">导入</text>
+        <text class="feature-value">拍照识别</text>
+      </view>
+      <view class="feature-item">
+        <text class="feature-label">提醒</text>
+        <text class="feature-value">到点通知</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="action-card">
+    <text class="action-title">现在开始整理你的课程节奏</text>
+    <text class="action-desc">使用微信登录后，课表和个人信息会同步保存。</text>
+    <view class="cta-button login-btn" bindtap="onLogin">微信登录</view>
+  </view>
 </view>

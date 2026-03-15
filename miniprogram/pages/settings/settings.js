@@ -1,66 +1,48 @@
-// pages/settings/settings.js
 Page({
-
-  /**
-   * 页面的初始数据
-   */
   data: {
-
+    remindEnabled: true,
+    remindOptions: [5, 10, 15, 20, 30, 45, 60],
+    remindMinutesIndex: 2,
+    remindMinutes: 15,
+    remindWeekends: false
   },
 
-  /**
-   * 生命周期函数--监听页面加载
-   */
-  onLoad(options) {
+  onLoad() {
+    const savedEnabled = wx.getStorageSync('remindEnabled');
+    const savedMinutes = wx.getStorageSync('remindMinutes');
+    const savedWeekends = wx.getStorageSync('remindWeekends');
+    const remindOptions = this.data.remindOptions;
+    const remindMinutes = typeof savedMinutes === 'number' ? savedMinutes : 15;
+    const remindMinutesIndex = Math.max(remindOptions.indexOf(remindMinutes), 0);
 
+    this.setData({
+      remindEnabled: savedEnabled !== '' ? !!savedEnabled : true,
+      remindMinutes,
+      remindMinutesIndex,
+      remindWeekends: savedWeekends === '' ? false : !!savedWeekends
+    });
   },
 
-  /**
-   * 生命周期函数--监听页面初次渲染完成
-   */
-  onReady() {
-
+  onToggleEnabled(e) {
+    this.setData({ remindEnabled: !!e.detail.value });
   },
 
-  /**
-   * 生命周期函数--监听页面显示
-   */
-  onShow() {
-
+  onMinutesChange(e) {
+    const index = Number(e.detail.value) || 0;
+    this.setData({
+      remindMinutesIndex: index,
+      remindMinutes: this.data.remindOptions[index]
+    });
   },
 
-  /**
-   * 生命周期函数--监听页面隐藏
-   */
-  onHide() {
-
+  onToggleWeekends(e) {
+    this.setData({ remindWeekends: !!e.detail.value });
   },
 
-  /**
-   * 生命周期函数--监听页面卸载
-   */
-  onUnload() {
-
-  },
-
-  /**
-   * 页面相关事件处理函数--监听用户下拉动作
-   */
-  onPullDownRefresh() {
-
-  },
-
-  /**
-   * 页面上拉触底事件的处理函数
-   */
-  onReachBottom() {
-
-  },
-
-  /**
-   * 用户点击右上角分享
-   */
-  onShareAppMessage() {
-
+  onSave() {
+    wx.setStorageSync('remindEnabled', this.data.remindEnabled);
+    wx.setStorageSync('remindMinutes', this.data.remindMinutes);
+    wx.setStorageSync('remindWeekends', this.data.remindWeekends);
+    wx.showToast({ title: '设置已保存', icon: 'success' });
   }
-})
+});

@@ -1,97 +1,135 @@
-<view class="container">
-  <view class="week-tabs">
-    <view
-      wx:for="{{['周一','周二','周三','周四','周五','周六','周日']}}"
-      wx:for-index="idx"
-      wx:key="idx"
-      class="week-tab {{selectedWeekday === idx + 1 ? 'active' : ''}}"
-      bindtap="onWeekdayChange"
-      data-weekday="{{idx + 1}}">
+<view class="page-shell">
+  <view class="headline-card">
+    <text class="eyebrow">WEEKLY TABLE</text>
+    <text class="headline-title">课程表</text>
+    <text class="headline-sub">点课程可修改，长按删除，右下角继续添加。</text>
+  </view>
+
+  <view class="tabs-card">
+    <view wx:for="{{['周一','周二','周三','周四','周五','周六','周日']}}" wx:for-index="idx" wx:key="idx" class="tab-pill {{selectedWeekday === idx + 1 ? 'active' : ''}}" bindtap="onWeekdayChange" data-weekday="{{idx + 1}}">
       {{item}}
     </view>
   </view>
 
-  <view wx:if="{{!isLoggedIn}}" class="empty">
-    <text class="empty-icon">📚</text>
-    <text class="empty-text">登录后可查看你的课表</text>
-    <text class="login-link" bindtap="goToLogin">去登录</text>
+  <view wx:if="{{!isLoggedIn}}" class="empty-card">
+    <text class="empty-mark">TABLE</text>
+    <text class="empty-title">登录后查看你的完整课表</text>
+    <text class="empty-sub">课程会按星期收好，也能随时修改。</text>
+    <view class="cta-button cta-primary" bindtap="goToLogin">去登录</view>
   </view>
 
-  <view wx:elif="{{loading}}" class="loading">
-    <text>加载中...</text>
+  <view wx:elif="{{loading}}" class="loading-card">
+    <text class="loading-text">正在整理这一天的课程...</text>
   </view>
 
-  <view wx:else class="course-list">
-    <view class="page-tip" wx:if="{{courses.length > 0}}">
-      <text>点课程可修改，长按可删除，右下角可添加课程</text>
+  <view wx:else class="course-stack">
+    <view wx:if="{{courses.length === 0}}" class="empty-card compact">
+      <text class="empty-mark">REST</text>
+      <text class="empty-title">这一天没有课程安排</text>
+      <text class="empty-sub">右下角可以手动补充课程。</text>
     </view>
 
-    <view
-      wx:for="{{courses}}"
-      wx:key="id"
-      class="course-card"
-      style="border-left: 4rpx solid {{item.color}}"
-      bindtap="onCourseClick"
-      bindlongpress="onDeleteCourse"
-      data-course="{{item}}"
-      data-id="{{item.id}}">
-      <view class="card-content">
-        <view class="card-header">
-          <text class="course-name">{{item.courseName}}</text>
-          <view class="header-tags">
-            <text class="period-tag">{{item.periodLabel}}</text>
-            <text class="section-info">{{item.sectionLabel}}</text>
+    <view wx:for="{{courses}}" wx:key="id" class="course-card" bindtap="onCourseClick" bindlongpress="onDeleteCourse" data-course="{{item}}" data-id="{{item.id}}">
+      <view class="accent-bar" style="background: {{item.color}}"></view>
+      <view class="course-main">
+        <view class="course-head">
+          <view class="title-wrap">
+            <text class="course-name">{{item.courseName}}</text>
+            <text class="course-sub">{{item.periodLabel}} · {{item.sectionLabel}}</text>
           </view>
+          <text class="time-pill">{{item.timeLabel}}</text>
         </view>
 
-        <view class="time-row">
-          <text class="time-chip">{{item.timeLabel}}</text>
-        </view>
-
-        <view class="card-body">
-          <view class="info-item" wx:if="{{item.teacherName}}">
-            <text class="icon">👨‍🏫</text>
-            <text>{{item.teacherName}}</text>
-          </view>
-          <view class="info-item">
-            <text class="icon">📍</text>
-            <text>{{item.classroom || '待定'}}</text>
-          </view>
-          <view class="info-item">
-            <text class="icon">🗓️</text>
-            <text>第{{item.startWeek}}-{{item.endWeek}}周</text>
-          </view>
+        <view class="meta-row">
+          <text class="meta-chip" wx:if="{{item.teacherName}}">{{item.teacherName}}</text>
+          <text class="meta-chip">{{item.classroom || '待定地点'}}</text>
+          <text class="meta-chip">第{{item.startWeek}}-{{item.endWeek}}周</text>
         </view>
       </view>
     </view>
   </view>
 
-  <view wx:if="{{isLoggedIn}}" class="add-btn" bindtap="onAddCourse">
-    <text class="add-icon">+</text>
+  <view wx:if="{{isLoggedIn}}" class="fab" bindtap="onAddCourse">
+    <text class="fab-text">+</text>
   </view>
 
-  <view wx:if="{{isLoggedIn && !loading && courses.length === 0}}" class="empty">
-    <text class="empty-icon">📚</text>
-    <text class="empty-text">当天没有课程</text>
-    <text class="empty-subtext">点击右下角可以添加课程</text>
+  <view wx:if="{{editorVisible}}" class="editor-mask" bindtap="closeEditor">
+    <view class="editor-panel" catchtap="noop">
+      <view class="editor-top">
+        <view>
+          <text class="editor-eyebrow">EDIT COURSE</text>
+          <text class="editor-title">{{editorTitle}}</text>
+        </view>
+        <text class="editor-close" bindtap="closeEditor">×</text>
+      </view>
+
+      <view class="editor-block">
+        <text class="editor-label">课程名称</text>
+        <input class="editor-input" value="{{editorCourse.courseName}}" data-field="courseName" bindinput="onEditorFieldChange" placeholder="请输入课程名称" />
+      </view>
+
+      <view class="editor-block">
+        <text class="editor-label">教师</text>
+        <input class="editor-input" value="{{editorCourse.teacherName}}" data-field="teacherName" bindinput="onEditorFieldChange" placeholder="请输入教师姓名" />
+      </view>
+
+      <view class="editor-block">
+        <text class="editor-label">地点</text>
+        <input class="editor-input" value="{{editorCourse.classroom}}" data-field="classroom" bindinput="onEditorFieldChange" placeholder="请输入上课地点" />
+      </view>
+
+      <view class="editor-block">
+        <text class="editor-label">时段</text>
+        <view class="choice-row">
+          <view wx:for="{{periodGroups}}" wx:key="key" class="choice-pill {{editorCourse.periodKey === item.key ? 'active' : ''}}" data-period="{{item.key}}" bindtap="onPeriodChange">
+            {{item.label}}
+          </view>
+        </view>
+      </view>
+
+      <view class="editor-block">
+        <text class="editor-label">节次</text>
+        <block wx:for="{{periodGroups}}" wx:key="key">
+          <view wx:if="{{editorCourse.periodKey === item.key}}" class="choice-row">
+            <view wx:for="{{item.slots}}" wx:key="label" class="choice-pill {{editorCourse.startSection === item.start && editorCourse.endSection === item.end ? 'active' : ''}}" data-start="{{item.start}}" data-end="{{item.end}}" bindtap="onSlotChange">
+              {{item.label}}
+            </view>
+          </view>
+        </block>
+      </view>
+
+      <view class="editor-block">
+        <text class="editor-label">周次</text>
+        <view class="week-input-row">
+          <input class="editor-input week-input" type="number" value="{{editorCourse.startWeek}}" data-field="startWeek" bindinput="onEditorFieldChange" />
+          <text class="week-join">-</text>
+          <input class="editor-input week-input" type="number" value="{{editorCourse.endWeek}}" data-field="endWeek" bindinput="onEditorFieldChange" />
+        </view>
+      </view>
+
+      <view class="editor-actions">
+        <view class="editor-btn editor-cancel" bindtap="closeEditor">取消</view>
+        <view class="editor-btn editor-save" bindtap="saveEditorCourse">保存</view>
+      </view>
+    </view>
   </view>
 </view>
 
 <view class="bottom-nav">
   <view class="nav-item" bindtap="goToIndex">
-    <text class="icon">🏠</text>
-    <text class="label">首页</text>
+    <text class="nav-icon">⌂</text>
+    <text class="nav-label">首页</text>
   </view>
   <view class="nav-item active" bindtap="goToCourses">
-    <text class="icon">🗓️</text>
-    <text class="label">课表</text>
+    <text class="nav-icon">▦</text>
+    <text class="nav-label">课表</text>
   </view>
   <view class="nav-item" bindtap="goToImport">
-    <text class="icon">📷</text>
-    <text class="label">导入</text>
+    <text class="nav-icon">◫</text>
+    <text class="nav-label">导入</text>
   </view>
   <view class="nav-item" bindtap="goToProfile">
-    <text class="icon">👤</text>
-    <text class="label">我的</text>
+    <text class="nav-icon">●</text>
+    <text class="nav-label">我的</text>
   </view>
 </view>

@@ -29,7 +29,19 @@
       "Bash(git add:*)",
       "Bash(git commit -m \"feat: 初始化小程序项目并创建 users 数据库集合:*)",
       "Bash(git commit -m \"feat: 初始化课程提醒小程序项目:*)",
-      "Bash(del .gitindex.lock)"
+      "Bash(del .gitindex.lock)",
+      "Bash(git config:*)",
+      "Bash(gh repo:*)",
+      "WebFetch(domain:www.scnet.cn)",
+      "mcp__cloudbase__updateFunctionCode",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npm install:*)",
+      "mcp__cloudbase__searchKnowledgeBase",
+      "Bash(node parse-schedule.js)",
+      "Bash(node parse-schedule-v2.js)",
+      "Bash(node parse-schedule-final.js)",
+      "Bash(node debug-columns.js)"
     ]
   }
 }

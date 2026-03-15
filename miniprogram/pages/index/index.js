@@ -6,7 +6,7 @@ Page({
     totalWeeks: 18,
     weekdayText: '',
     isLoggedIn: false,
-    colors: ['#4F46E5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'],
+    colors: ['#C96F3B', '#2E6B5B', '#7A6854', '#B65429', '#476356', '#8C7B68']
   },
 
   onLoad() {
@@ -25,8 +25,6 @@ Page({
     const now = new Date();
     const weekday = now.getDay() || 7;
     const weekdayText = weekdays[weekday];
-
-    // 计算当前周次（基于学期开始日期，默认第1周）
     const currentWeek = this.calculateCurrentWeek();
 
     this.setData({ user, weekdayText, currentWeek, isLoggedIn });
@@ -38,26 +36,29 @@ Page({
 
     if (user && user.id) {
       this.loadTodayCourses(user.id, weekday, currentWeek);
-    } else if (token) {
-      // user.id 不存在，通过 openid 查找
-      wx.cloud.callFunction({
-        name: 'db-query',
-        data: { sql: 'SELECT id FROM users WHERE openid = ? LIMIT 1', params: [token] },
-        success: (res) => {
-          const result = res.result;
-          if (result && result.success && result.data && result.data.length > 0) {
-            const userId = result.data[0].id;
-            wx.setStorageSync('user', Object.assign({}, user, { id: userId }));
-            this.setData({ user: Object.assign({}, user, { id: userId }) });
-            this.loadTodayCourses(userId, weekday, currentWeek);
-          }
-        }
-      });
+      return;
     }
+
+    wx.cloud.callFunction({
+      name: 'db-query',
+      data: {
+        sql: 'SELECT id FROM users WHERE openid = ? LIMIT 1',
+        params: [token]
+      },
+      success: (res) => {
+        const result = res.result;
+        if (result && result.success && result.data && result.data.length > 0) {
+          const userId = result.data[0].id;
+          const nextUser = Object.assign({}, user, { id: userId });
+          wx.setStorageSync('user', nextUser);
+          this.setData({ user: nextUser });
+          this.loadTodayCourses(userId, weekday, currentWeek);
+        }
+      }
+    });
   },
 
   calculateCurrentWeek() {
-    // 从本地存储获取学期开始日期，默认当前为第1周
     const semesterStart = wx.getStorageSync('semesterStart');
     if (!semesterStart) return 1;
 
@@ -83,28 +84,26 @@ Page({
       success: (res) => {
         const result = res.result;
         if (result && result.success && result.data) {
-          const courses = result.data.map((c, i) => ({
-            id: c.id,
-            courseName: c.course_name,
-            classroom: c.location,
-            teacherName: c.teacher,
-            startTime: this.sectionToTime(c.start_section, true),
-            endTime: this.sectionToTime(c.end_section, false),
-            color: c.color || this.data.colors[i % this.data.colors.length]
+          const courses = result.data.map((course, index) => ({
+            id: course.id,
+            courseName: course.course_name,
+            classroom: course.location,
+            teacherName: course.teacher,
+            startTime: this.sectionToTime(course.start_section, true),
+            endTime: this.sectionToTime(course.end_section, false),
+            color: course.color || this.data.colors[index % this.data.colors.length]
           }));
           this.setData({ todayCourses: courses });
         } else {
           this.setData({ todayCourses: [] });
         }
       },
-      fail: (err) => {
-        console.error('[Index] 加载课程失败:', err);
+      fail: () => {
         this.setData({ todayCourses: [] });
       }
     });
   },
 
-  // 节次转时间
   sectionToTime(section, isStart) {
     const timeMap = {
       1: ['08:00', '08:45'],
@@ -116,11 +115,11 @@ Page({
       7: ['16:00', '16:45'],
       8: ['16:55', '17:40'],
       9: ['19:00', '19:45'],
-      10: ['19:55', '20:40'],
+      10: ['19:55', '20:40']
     };
-    const t = timeMap[section];
-    if (!t) return isStart ? '08:00' : '08:45';
-    return isStart ? t[0] : t[1];
+    const time = timeMap[section];
+    if (!time) return isStart ? '08:00' : '08:45';
+    return isStart ? time[0] : time[1];
   },
 
   onWeekChange(e) {
@@ -129,12 +128,19 @@ Page({
     const user = wx.getStorageSync('user') || {};
     const token = wx.getStorageSync('token');
     const weekday = new Date().getDay() || 7;
+
     if (user && user.id) {
       this.loadTodayCourses(user.id, weekday, week);
-    } else if (token) {
+      return;
+    }
+
+    if (token) {
       wx.cloud.callFunction({
         name: 'db-query',
-        data: { sql: 'SELECT id FROM users WHERE openid = ? LIMIT 1', params: [token] },
+        data: {
+          sql: 'SELECT id FROM users WHERE openid = ? LIMIT 1',
+          params: [token]
+        },
         success: (res) => {
           const result = res.result;
           if (result && result.success && result.data && result.data.length > 0) {
@@ -145,10 +151,10 @@ Page({
     }
   },
 
-  goToIndex() { },
+  goToIndex() {},
   goToCourses() { wx.navigateTo({ url: '/pages/courses/courses' }); },
   goToImport() { wx.navigateTo({ url: '/pages/import/import' }); },
   goToSettings() { wx.navigateTo({ url: '/pages/settings/settings' }); },
   goToProfile() { wx.navigateTo({ url: '/pages/profile/profile' }); },
-  goToLogin() { wx.navigateTo({ url: '/pages/login/login' }); },
+  goToLogin() { wx.navigateTo({ url: '/pages/login/login' }); }
 });
