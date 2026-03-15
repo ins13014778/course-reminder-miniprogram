@@ -1,0 +1,119 @@
+<view class="container">
+  <!-- 顶部栏 -->
+  <view class="top-bar">
+    <view class="user-info">
+      <image class="avatar" src="{{user.avatar}}" wx:if="{{user.avatar}}" />
+      <view class="avatar-placeholder" wx:else>👤</view>
+      <view class="welcome">
+        <text class="greeting">欢迎回来，</text>
+        <text class="username">{{user.nickname || '同学'}}</text>
+      </view>
+    </view>
+    <view class="notification-btn">
+      <text class="icon">🔔</text>
+      <view class="badge"></view>
+    </view>
+  </view>
+
+  <!-- 周次选择器 -->
+  <view class="week-selector">
+    <scroll-view scroll-x class="week-scroll">
+      <view class="week-list">
+        <view
+          wx:for="{{[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]}}"
+          wx:key="*this"
+          class="week-item {{currentWeek === item ? 'active' : ''}}"
+          bindtap="onWeekChange"
+          data-week="{{item}}">
+          {{item}}周
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 今日课程 -->
+  <view class="courses-section">
+    <view class="section-header">
+      <text class="title">今日课程</text>
+      <text class="weekday-text">周一</text>
+    </view>
+
+    <view wx:if="{{todayCourses.length > 0}}" class="course-list">
+      <view
+        wx:for="{{todayCourses}}"
+        wx:key="id"
+        class="course-card"
+        style="--card-color: {{item.color || '#4F46E5'}}">
+        <view class="color-bar"></view>
+        <view class="time-block">
+          <text class="start-time">{{item.startTime || '08:00'}}</text>
+          <text class="end-time">{{item.endTime || '09:35'}}</text>
+        </view>
+        <view class="course-info">
+          <text class="course-name">{{item.courseName}}</text>
+          <view class="course-meta">
+            <text class="teacher" wx:if="{{item.teacherName}}">{{item.teacherName}}</text>
+            <view class="location">
+              <text class="icon">📍</text>
+              <text class="text">{{item.classroom}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:else class="empty-state">
+      <text class="icon">📅</text>
+      <text class="text">今天没有课程，好好休息！</text>
+    </view>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="action-buttons">
+    <button class="btn-primary" bindtap="goToImport">
+      <text class="icon">📥</text>
+      <text>导入课表</text>
+    </button>
+    <view class="btn-row">
+      <button class="btn-secondary" bindtap="goToCourses">
+        <text class="icon">➕</text>
+        <text>手动添加</text>
+      </button>
+      <button class="btn-secondary" bindtap="goToSettings">
+        <text class="icon">⚙️</text>
+        <text>调整</text>
+      </button>
+    </view>
+  </view>
+
+  <!-- 学期进度 -->
+  <view class="progress-section">
+    <view class="progress-header">
+      <text class="title">学期进度</text>
+      <text class="week-info">第 8 / 18 周</text>
+    </view>
+    <view class="progress-bar">
+      <view class="progress-fill" style="width: 45%"></view>
+    </view>
+  </view>
+</view>
+
+<!-- 底部导航 -->
+<view class="bottom-nav">
+  <view class="nav-item active" bindtap="goToIndex">
+    <text class="icon">🏠</text>
+    <text class="label">首页</text>
+  </view>
+  <view class="nav-item" bindtap="goToCourses">
+    <text class="icon">📅</text>
+    <text class="label">课表</text>
+  </view>
+  <view class="nav-item" bindtap="goToImport">
+    <text class="icon">📷</text>
+    <text class="label">导入</text>
+  </view>
+  <view class="nav-item" bindtap="goToProfile">
+    <text class="icon">👤</text>
+    <text class="label">我的</text>
+  </view>
+</view>

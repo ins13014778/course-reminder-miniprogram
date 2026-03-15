@@ -1,0 +1,86 @@
+<view class="container">
+  <!-- 用户信息卡片 -->
+  <view class="user-card">
+    <view class="avatar-wrapper">
+      <image class="avatar" src="{{user.avatar}}" wx:if="{{user.avatar}}" />
+      <view class="avatar-placeholder" wx:else>👤</view>
+    </view>
+    <view class="user-info">
+      <text class="nickname">{{user.nickname || '点击设置昵称'}}</text>
+      <text class="school" wx:if="{{user.schoolName}}">{{user.schoolName}}</text>
+    </view>
+  </view>
+
+  <!-- 信息列表 -->
+  <view class="info-section">
+    <view class="info-item">
+      <view class="info-left">
+        <text class="info-icon">🎓</text>
+        <text class="info-label">学校</text>
+      </view>
+      <text class="info-value">{{user.schoolName || '未设置'}}</text>
+    </view>
+    <view class="info-item">
+      <view class="info-left">
+        <text class="info-icon">📚</text>
+        <text class="info-label">专业</text>
+      </view>
+      <text class="info-value">{{user.major || '未设置'}}</text>
+    </view>
+    <view class="info-item">
+      <view class="info-left">
+        <text class="info-icon">📅</text>
+        <text class="info-label">年级</text>
+      </view>
+      <text class="info-value">{{user.grade || '未设置'}}</text>
+    </view>
+  </view>
+
+  <!-- 功能入口 -->
+  <view class="menu-section">
+    <view class="menu-item" bindtap="goToSettings">
+      <view class="menu-left">
+        <text class="menu-icon">⚙️</text>
+        <text class="menu-label">提醒设置</text>
+      </view>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-item">
+      <view class="menu-left">
+        <text class="menu-icon">🔔</text>
+        <text class="menu-label">通知管理</text>
+      </view>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-item">
+      <view class="menu-left">
+        <text class="menu-icon">ℹ️</text>
+        <text class="menu-label">关于我们</text>
+      </view>
+      <text class="menu-arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 退出登录 -->
+  <button class="logout-btn" bindtap="onLogout">退出登录</button>
+</view>
+
+<!-- 底部导航 -->
+<view class="bottom-nav">
+  <view class="nav-item" bindtap="goToIndex">
+    <text class="icon">🏠</text>
+    <text class="label">首页</text>
+  </view>
+  <view class="nav-item" bindtap="goToCourses">
+    <text class="icon">📅</text>
+    <text class="label">课表</text>
+  </view>
+  <view class="nav-item" bindtap="goToImport">
+    <text class="icon">📷</text>
+    <text class="label">导入</text>
+  </view>
+  <view class="nav-item active" bindtap="goToProfile">
+    <text class="icon">👤</text>
+    <text class="label">我的</text>
+  </view>
+</view>

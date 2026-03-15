@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx:*)",
+      "WebSearch",
+      "Bash(ls:*)",
+      "Bash(cd:*)",
+      "Bash(netstat:*)",
+      "Bash(tail:*)",
+      "Bash(npm run:*)",
+      "Bash(taskkill:*)",
+      "Bash(curl:*)",
+      "Bash(echo:*)",
+      "mcp__cloudbase__auth",
+      "mcp__cloudbase__readNoSqlDatabaseStructure",
+      "mcp__cloudbase__executeReadOnlySQL",
+      "mcp__cloudbase__getFunctionList",
+      "mcp__cloudbase__createFunction",
+      "mcp__cloudbase__executeWriteSQL",
+      "mcp__cloudbase__queryCloudRun",
+      "mcp__cloudbase__manageCloudRun",
+      "WebFetch(domain:course-reminder-233530-9-1316672218.sh.run.tcloudbase.com)",
+      "mcp__cloudbase__getFunctionLogs",
+      "mcp__cloudbase__updateFunctionConfig",
+      "mcp__cloudbase__invokeFunction",
+      "WebFetch(domain:github.com)",
+      "mcp__cloudbase__callCloudApi",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"feat: 初始化小程序项目并创建 users 数据库集合:*)",
+      "Bash(git commit -m \"feat: 初始化课程提醒小程序项目:*)",
+      "Bash(del .gitindex.lock)"
+    ]
+  }
+}

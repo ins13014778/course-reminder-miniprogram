@@ -1,0 +1,33 @@
+<view class="container" wx:if="{{course}}">
+  <view class="header">
+    <text class="title">{{course.courseName}}</text>
+    <button wx:if="{{!editing}}" size="mini" bindtap="onEdit">编辑</button>
+  </view>
+
+  <view class="info-item">
+    <text class="label">教师：</text>
+    <input wx:if="{{editing}}" value="{{course.teacherName}}" />
+    <text wx:else>{{course.teacherName}}</text>
+  </view>
+
+  <view class="info-item">
+    <text class="label">教室：</text>
+    <input wx:if="{{editing}}" value="{{course.classroom}}" />
+    <text wx:else>{{course.classroom}}</text>
+  </view>
+
+  <view class="info-item">
+    <text class="label">时间：</text>
+    <text>周{{course.weekday}} 第{{course.startSection}}-{{course.endSection}}节</text>
+  </view>
+
+  <view class="info-item">
+    <text class="label">周次：</text>
+    <text>第{{course.startWeek}}-{{course.endWeek}}周</text>
+  </view>
+
+  <view class="actions" wx:if="{{editing}}">
+    <button type="primary" bindtap="onSave">保存</button>
+    <button bindtap="onDelete">删除课程</button>
+  </view>
+</view>

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Profile &amp; Settings - Course Reminder</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1c74e9",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#111821",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Lexend', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="max-w-md mx-auto min-h-screen flex flex-col bg-background-light dark:bg-background-dark">
+<!-- Header -->
+<div class="flex items-center bg-white dark:bg-slate-900 p-4 sticky top-0 z-10 border-b border-slate-200 dark:border-slate-800">
+<div class="text-primary flex size-10 shrink-0 items-center justify-center cursor-pointer">
+<span class="material-symbols-outlined">arrow_back</span>
+</div>
+<h2 class="text-slate-900 dark:text-slate-100 text-lg font-bold leading-tight tracking-tight flex-1 text-center pr-10">设置</h2>
+</div>
+<!-- Profile Summary -->
+<div class="flex p-6 bg-white dark:bg-slate-900 mb-2">
+<div class="flex w-full items-center gap-5">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-20 w-20 border-2 border-primary/20" data-alt="Professional male avatar with friendly expression" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBFEZIl5rW0bFwVdiXimmHEGOIlKIOqgnrbFh3hDS1KJl_fnRnkQS45hUQOAqoXQeXQf7BkwkVMVsR4nLg_spxq9q4bhe7oJ4ds2P2Ghl2NvBWVMYi827PHMIpwN0dqAQ-9offZc5lGbdaaZsuY0La2EkSikPCJVEwuqSfDybEksSZSQjkvuRlYLhLGpvRyXyA9YF_KpZzheOkjBzyjGnNwdlMGYaeHKLTTnX-Q3BKw_Zzv50OI_C3AHJAXO5pq6of620kTUQSPaMEb");'></div>
+<div class="flex flex-col justify-center">
+<p class="text-slate-900 dark:text-slate-100 text-xl font-bold leading-tight">Alex Chen</p>
+<p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Peking University</p>
+<div class="mt-2 inline-flex items-center px-2 py-0.5 rounded bg-primary/10 text-primary text-xs font-medium">
+                        Computer Science
+                    </div>
+</div>
+</div>
+</div>
+<!-- Reminder Settings -->
+<div class="px-4 py-3">
+<h3 class="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2 px-1">提醒设置</h3>
+<div class="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-sm">
+<!-- Toggle -->
+<div class="flex items-center gap-4 px-4 min-h-14 justify-between border-b border-slate-100 dark:border-slate-800">
+<div class="flex items-center gap-3">
+<div class="text-primary flex items-center justify-center rounded-lg bg-primary/10 shrink-0 size-9">
+<span class="material-symbols-outlined text-[20px]">notifications_active</span>
+</div>
+<p class="text-slate-900 dark:text-slate-100 text-sm font-medium">上课提醒</p>
+</div>
+<div class="shrink-0">
+<label class="relative flex h-[28px] w-[48px] cursor-pointer items-center rounded-full border-none bg-slate-200 dark:bg-slate-700 p-0.5 has-[:checked]:justify-end has-[:checked]:bg-primary">
+<div class="h-full w-[24px] rounded-full bg-white shadow-sm"></div>
+<input checked="" class="invisible absolute" type="checkbox"/>
+</label>
+</div>
+</div>
+<!-- Dropdown (Simulated as list item for WeChat style) -->
+<div class="flex items-center gap-4 px-4 min-h-14 justify-between cursor-pointer active:bg-slate-50 dark:active:bg-slate-800">
+<div class="flex items-center gap-3">
+<div class="text-primary flex items-center justify-center rounded-lg bg-primary/10 shrink-0 size-9">
+<span class="material-symbols-outlined text-[20px]">schedule</span>
+</div>
+<p class="text-slate-900 dark:text-slate-100 text-sm font-medium">提醒时间</p>
+</div>
+<div class="flex items-center gap-1">
+<span class="text-slate-400 dark:text-slate-500 text-sm">课前10分钟</span>
+<span class="material-symbols-outlined text-slate-300 dark:text-slate-600">chevron_right</span>
+</div>
+</div>
+</div>
+</div>
+<!-- General Settings -->
+<div class="px-4 py-3">
+<h3 class="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2 px-1">常规设置</h3>
+<div class="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-sm">
+<div class="flex items-center gap-4 px-4 min-h-14 justify-between border-b border-slate-100 dark:border-slate-800 cursor-pointer active:bg-slate-50">
+<div class="flex items-center gap-3">
+<div class="text-primary flex items-center justify-center rounded-lg bg-primary/10 shrink-0 size-9">
+<span class="material-symbols-outlined text-[20px]">school</span>
+</div>
+<p class="text-slate-900 dark:text-slate-100 text-sm font-medium">学校名称</p>
+</div>
+<div class="flex items-center gap-1">
+<span class="text-slate-400 dark:text-slate-500 text-sm">Peking University</span>
+<span class="material-symbols-outlined text-slate-300 dark:text-slate-600">chevron_right</span>
+</div>
+</div>
+<div class="flex items-center gap-4 px-4 min-h-14 justify-between border-b border-slate-100 dark:border-slate-800 cursor-pointer active:bg-slate-50">
+<div class="flex items-center gap-3">
+<div class="text-primary flex items-center justify-center rounded-lg bg-primary/10 shrink-0 size-9">
+<span class="material-symbols-outlined text-[20px]">auto_stories</span>
+</div>
+<p class="text-slate-900 dark:text-slate-100 text-sm font-medium">专业</p>
+</div>
+<div class="flex items-center gap-1">
+<span class="text-slate-400 dark:text-slate-500 text-sm">Computer Science</span>
+<span class="material-symbols-outlined text-slate-300 dark:text-slate-600">chevron_right</span>
+</div>
+</div>
+<div class="flex items-center gap-4 px-4 min-h-14 justify-between cursor-pointer active:bg-slate-50">
+<div class="flex items-center gap-3">
+<div class="text-primary flex items-center justify-center rounded-lg bg-primary/10 shrink-0 size-9">
+<span class="material-symbols-outlined text-[20px]">calendar_today</span>
+</div>
+<p class="text-slate-900 dark:text-slate-100 text-sm font-medium">当前周次</p>
+</div>
+<div class="flex items-center gap-1">
+<span class="text-slate-400 dark:text-slate-500 text-sm">第 8 周</span>
+<span class="material-symbols-outlined text-slate-300 dark:text-slate-600">chevron_right</span>
+</div>
+</div>
+</div>
+</div>
+<!-- About & Feedback -->
+<div class="px-4 py-3 mb-24">
+<h3 class="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2 px-1">支持</h3>
+<div class="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-sm">
+<div class="flex items-center gap-4 px-4 min-h-14 justify-between border-b border-slate-100 dark:border-slate-800 cursor-pointer active:bg-slate-50">
+<div class="flex items-center gap-3">
+<div class="text-primary flex items-center justify-center rounded-lg bg-primary/10 shrink-0 size-9">
+<span class="material-symbols-outlined text-[20px]">info</span>
+</div>
+<p class="text-slate-900 dark:text-slate-100 text-sm font-medium">关于版本</p>
+</div>
+<div class="flex items-center gap-1">
+<span class="text-slate-400 dark:text-slate-500 text-sm">v2.4.0</span>
+<span class="material-symbols-outlined text-slate-300 dark:text-slate-600">chevron_right</span>
+</div>
+</div>
+<div class="flex items-center gap-4 px-4 min-h-14 justify-between cursor-pointer active:bg-slate-50">
+<div class="flex items-center gap-3">
+<div class="text-primary flex items-center justify-center rounded-lg bg-primary/10 shrink-0 size-9">
+<span class="material-symbols-outlined text-[20px]">rate_review</span>
+</div>
+<p class="text-slate-900 dark:text-slate-100 text-sm font-medium">反馈建议</p>
+</div>
+<span class="material-symbols-outlined text-slate-300 dark:text-slate-600">chevron_right</span>
+</div>
+</div>
+<button class="w-full mt-8 py-4 text-rose-500 font-semibold text-sm bg-white dark:bg-slate-900 rounded-xl shadow-sm active:bg-rose-50 border border-rose-100 dark:border-rose-900/30">退出登录</button>
+</div>
+<!-- Bottom Navigation Bar -->
+<div class="fixed bottom-0 left-0 right-0 max-w-md mx-auto flex gap-2 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 pb-4 pt-3 safe-area-bottom">
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined text-[24px]">calendar_month</span>
+<p class="text-[10px] font-medium leading-none">课表</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined text-[24px]">explore</span>
+<p class="text-[10px] font-medium leading-none">发现</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined text-[24px] fill-1">person</span>
+<p class="text-[10px] font-medium leading-none">我的</p>
+</a>
+</div>
+</div>
+</body></html>

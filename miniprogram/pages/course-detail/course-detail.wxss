@@ -1,0 +1,33 @@
+.container {
+  padding: 30rpx;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 40rpx;
+}
+
+.title {
+  font-size: 36rpx;
+  font-weight: bold;
+}
+
+.info-item {
+  margin-bottom: 30rpx;
+  display: flex;
+  align-items: center;
+}
+
+.label {
+  width: 120rpx;
+  color: #666;
+}
+
+.actions {
+  margin-top: 60rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}

@@ -1,0 +1,4 @@
+<view class="container">
+  <view class="title">课程提醒系统</view>
+  <button class="login-btn" bindtap="onLogin">微信登录</button>
+</view>

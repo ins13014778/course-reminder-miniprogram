@@ -1,0 +1,179 @@
+.container {
+  min-height: 100vh;
+  background: #f6f7f8;
+  padding: 30rpx 30rpx 140rpx;
+}
+
+/* 用户卡片 */
+.user-card {
+  background: linear-gradient(135deg, #4F46E5 0%, #7c3aed 100%);
+  border-radius: 24rpx;
+  padding: 50rpx 40rpx;
+  display: flex;
+  align-items: center;
+  gap: 30rpx;
+  margin-bottom: 30rpx;
+}
+
+.avatar-wrapper {
+  position: relative;
+}
+
+.avatar,
+.avatar-placeholder {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  border: 6rpx solid rgba(255,255,255,0.3);
+}
+
+.avatar-placeholder {
+  background: rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 50rpx;
+}
+
+.user-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.nickname {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: white;
+  margin-bottom: 8rpx;
+}
+
+.school {
+  font-size: 26rpx;
+  color: rgba(255,255,255,0.8);
+}
+
+/* 信息区域 */
+.info-section {
+  background: white;
+  border-radius: 20rpx;
+  margin-bottom: 30rpx;
+  overflow: hidden;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 28rpx 24rpx;
+  border-bottom: 1rpx solid #f1f5f9;
+}
+
+.info-item:last-child {
+  border-bottom: none;
+}
+
+.info-left {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.info-icon {
+  font-size: 32rpx;
+}
+
+.info-label {
+  font-size: 28rpx;
+  color: #374151;
+}
+
+.info-value {
+  font-size: 28rpx;
+  color: #94a3b8;
+}
+
+/* 功能菜单 */
+.menu-section {
+  background: white;
+  border-radius: 20rpx;
+  margin-bottom: 30rpx;
+  overflow: hidden;
+}
+
+.menu-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 28rpx 24rpx;
+  border-bottom: 1rpx solid #f1f5f9;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-left {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.menu-icon {
+  font-size: 32rpx;
+}
+
+.menu-label {
+  font-size: 28rpx;
+  color: #374151;
+}
+
+.menu-arrow {
+  font-size: 32rpx;
+  color: #cbd5e1;
+}
+
+/* 退出按钮 */
+.logout-btn {
+  width: 100%;
+  background: white;
+  color: #ef4444;
+  font-size: 30rpx;
+  font-weight: 500;
+  border-radius: 16rpx;
+  padding: 26rpx 0;
+  border: none;
+}
+
+/* 底部导航 */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-around;
+  background: white;
+  padding: 16rpx 0 50rpx;
+  border-top: 1rpx solid #f1f5f9;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+  color: #94a3b8;
+}
+
+.nav-item.active {
+  color: #4F46E5;
+}
+
+.nav-item .icon {
+  font-size: 40rpx;
+}
+
+.nav-item .label {
+  font-size: 22rpx;
+}

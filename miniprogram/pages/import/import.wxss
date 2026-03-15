@@ -1,0 +1,288 @@
+.container {
+  min-height: 100vh;
+  background: #f6f7f8;
+  padding: 30rpx 30rpx 140rpx;
+}
+
+.header {
+  margin-bottom: 30rpx;
+}
+
+.title {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+/* 类型选择器 */
+.type-selector {
+  background: white;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 30rpx;
+}
+
+.type-label {
+  font-size: 26rpx;
+  color: #64748b;
+  margin-bottom: 16rpx;
+}
+
+.type-picker {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 30rpx;
+  color: #1e293b;
+}
+
+.arrow {
+  font-size: 24rpx;
+  color: #94a3b8;
+}
+
+/* 上传区域 */
+.upload-section {
+  margin-bottom: 30rpx;
+}
+
+.upload-area {
+  background: white;
+  border-radius: 20rpx;
+  padding: 80rpx 40rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 2rpx dashed #e2e8f0;
+  transition: all 0.2s;
+}
+
+.upload-area:active {
+  border-color: #4F46E5;
+  background: rgba(79, 70, 229, 0.02);
+}
+
+.upload-icon {
+  font-size: 100rpx;
+  margin-bottom: 24rpx;
+}
+
+.upload-text {
+  font-size: 32rpx;
+  color: #1e293b;
+  font-weight: 500;
+  margin-bottom: 12rpx;
+}
+
+.upload-hint {
+  font-size: 26rpx;
+  color: #94a3b8;
+}
+
+/* 状态区域 */
+.status-section {
+  background: white;
+  border-radius: 20rpx;
+  padding: 60rpx 40rpx;
+  text-align: center;
+}
+
+.loading-box,
+.success-box,
+.error-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.spinner {
+  width: 80rpx;
+  height: 80rpx;
+  border: 6rpx solid #e2e8f0;
+  border-top-color: #4F46E5;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 30rpx;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.status-text {
+  font-size: 32rpx;
+  color: #1e293b;
+  font-weight: 500;
+}
+
+.status-hint {
+  font-size: 26rpx;
+  color: #94a3b8;
+  margin-top: 12rpx;
+}
+
+/* 成功状态 */
+.success-icon {
+  width: 100rpx;
+  height: 100rpx;
+  background: #10b981;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 50rpx;
+  color: white;
+  margin-bottom: 24rpx;
+}
+
+.success-text {
+  font-size: 32rpx;
+  color: #10b981;
+  font-weight: 600;
+}
+
+/* 结果预览 */
+.result-preview {
+  margin: 40rpx 0;
+}
+
+.preview-label {
+  font-size: 26rpx;
+  color: #64748b;
+  margin-bottom: 16rpx;
+  display: block;
+}
+
+.preview-content {
+  background: #f8fafc;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  text-align: left;
+}
+
+.preview-content text {
+  font-size: 28rpx;
+  color: #1e293b;
+  line-height: 1.6;
+}
+
+/* 按钮 */
+.action-buttons {
+  display: flex;
+  gap: 20rpx;
+}
+
+.btn-primary {
+  flex: 1;
+  background: #4F46E5;
+  color: white;
+  font-size: 30rpx;
+  font-weight: 500;
+  border-radius: 12rpx;
+  padding: 24rpx 0;
+}
+
+.btn-secondary {
+  flex: 1;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 30rpx;
+  font-weight: 500;
+  border-radius: 12rpx;
+  padding: 24rpx 0;
+}
+
+/* 失败状态 */
+.status-section.failed {
+  background: white;
+}
+
+.error-icon {
+  width: 100rpx;
+  height: 100rpx;
+  background: #ef4444;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 50rpx;
+  color: white;
+  margin-bottom: 24rpx;
+}
+
+.error-text {
+  font-size: 32rpx;
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.error-hint {
+  font-size: 26rpx;
+  color: #94a3b8;
+  margin-top: 12rpx;
+}
+
+.btn-retry {
+  margin-top: 30rpx;
+  background: #4F46E5;
+  color: white;
+  font-size: 30rpx;
+  border-radius: 12rpx;
+  padding: 20rpx 60rpx;
+}
+
+/* 快捷入口 */
+.quick-actions {
+  margin-top: 30rpx;
+}
+
+.action-item {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  background: white;
+  padding: 24rpx;
+  border-radius: 12rpx;
+}
+
+.action-icon {
+  font-size: 36rpx;
+}
+
+.action-text {
+  font-size: 28rpx;
+  color: #64748b;
+}
+
+/* 底部导航 */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-around;
+  background: white;
+  padding: 16rpx 0 50rpx;
+  border-top: 1rpx solid #f1f5f9;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+  color: #94a3b8;
+}
+
+.nav-item.active {
+  color: #4F46E5;
+}
+
+.nav-item .icon {
+  font-size: 40rpx;
+}
+
+.nav-item .label {
+  font-size: 22rpx;
+}

@@ -1,0 +1,153 @@
+.container {
+  min-height: 100vh;
+  background: #f6f7f8;
+  padding: 20rpx 20rpx 140rpx;
+}
+
+/* 周选择器 */
+.week-tabs {
+  display: flex;
+  background: white;
+  border-radius: 16rpx;
+  padding: 12rpx;
+  margin-bottom: 24rpx;
+  gap: 8rpx;
+}
+
+.week-tab {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 0;
+  font-size: 26rpx;
+  color: #64748b;
+  border-radius: 12rpx;
+  transition: all 0.2s;
+}
+
+.week-tab.active {
+  background: #4F46E5;
+  color: white;
+  font-weight: 600;
+}
+
+/* 课程卡片 */
+.course-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.course-card {
+  display: flex;
+  background: white;
+  border-radius: 16rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.06);
+}
+
+.color-bar {
+  width: 10rpx;
+  background: var(--card-color, #4F46E5);
+}
+
+.card-content {
+  flex: 1;
+  padding: 24rpx;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16rpx;
+}
+
+.course-name {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1e293b;
+  flex: 1;
+}
+
+.section-info {
+  font-size: 22rpx;
+  color: #94a3b8;
+  background: #f1f5f9;
+  padding: 6rpx 12rpx;
+  border-radius: 8rpx;
+}
+
+.card-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 24rpx;
+  color: #64748b;
+}
+
+.info-item .icon {
+  font-size: 24rpx;
+}
+
+/* 空状态 */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 100rpx 0;
+}
+
+.empty-icon {
+  font-size: 80rpx;
+  margin-bottom: 20rpx;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #94a3b8;
+}
+
+.loading {
+  text-align: center;
+  padding: 60rpx;
+  color: #94a3b8;
+}
+
+/* 底部导航 */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-around;
+  background: white;
+  padding: 16rpx 0 50rpx;
+  border-top: 1rpx solid #f1f5f9;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+  color: #94a3b8;
+}
+
+.nav-item.active {
+  color: #4F46E5;
+}
+
+.nav-item .icon {
+  font-size: 40rpx;
+}
+
+.nav-item .label {
+  font-size: 22rpx;
+}

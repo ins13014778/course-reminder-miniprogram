@@ -1,0 +1,12 @@
+<view class="container">
+  <view class="title">提醒设置</view>
+
+  <view class="setting-item">
+    <text class="label">提前提醒时间</text>
+    <picker mode="selector" range="{{[5, 10, 15, 30]}}" value="{{remindMinutes}}" bindchange="onMinutesChange">
+      <view class="picker">{{remindMinutes}}分钟</view>
+    </picker>
+  </view>
+
+  <button type="primary" bindtap="onSave">保存设置</button>
+</view>

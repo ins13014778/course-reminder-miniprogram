@@ -1,0 +1,92 @@
+<view class="container">
+  <view class="header">
+    <text class="title">导入课表</text>
+  </view>
+
+  <!-- OCR类型选择 -->
+  <view class="type-selector">
+    <view class="type-label">识别类型</view>
+    <picker mode="selector" range="{{ocrTypes}}" range-key="name" value="{{ocrTypeIndex}}" bindchange="onOcrTypeChange">
+      <view class="type-picker">
+        <text>{{currentOcrTypeName}}</text>
+        <text class="arrow">▼</text>
+      </view>
+    </picker>
+  </view>
+
+  <!-- 上传区域 -->
+  <view wx:if="{{status === 'idle'}}" class="upload-section">
+    <view class="upload-area" bindtap="onChooseImage">
+      <view class="upload-icon">📷</view>
+      <text class="upload-text">点击上传课程表照片</text>
+      <text class="upload-hint">支持 JPG、PNG 格式</text>
+    </view>
+  </view>
+
+  <!-- 上传中 -->
+  <view wx:if="{{status === 'uploading'}}" class="status-section">
+    <view class="loading-box">
+      <view class="spinner"></view>
+      <text class="status-text">正在识别课程表...</text>
+      <text class="status-hint">请稍候</text>
+    </view>
+  </view>
+
+  <!-- 识别成功 -->
+  <view wx:if="{{status === 'success'}}" class="result-section">
+    <view class="success-box">
+      <view class="success-icon">✓</view>
+      <text class="success-text">识别成功</text>
+    </view>
+
+    <view class="result-preview">
+      <text class="preview-label">识别结果预览</text>
+      <view class="preview-content">
+        <text>{{recognizedText || '课程数据已解析'}}</text>
+      </view>
+    </view>
+
+    <view class="action-buttons">
+      <button class="btn-secondary" bindtap="onChooseImage">重新拍照</button>
+      <button class="btn-primary" bindtap="onConfirm">确认导入</button>
+    </view>
+  </view>
+
+  <!-- 识别失败 -->
+  <view wx:if="{{status === 'failed'}}" class="status-section failed">
+    <view class="error-box">
+      <view class="error-icon">✕</view>
+      <text class="error-text">识别失败</text>
+      <text class="error-hint" wx:if="{{errorMsg}}">{{errorMsg}}</text>
+      <button class="btn-retry" bindtap="onRetry">重新上传</button>
+    </view>
+  </view>
+
+  <!-- 快捷入口 -->
+  <view class="quick-actions">
+    <view class="action-item" bindtap="goToSettings">
+      <text class="action-icon">⚙️</text>
+      <text class="action-text">API 设置</text>
+    </view>
+  </view>
+</view>
+
+<!-- 底部导航 -->
+<view class="bottom-nav">
+  <view class="nav-item" bindtap="goToIndex">
+    <text class="icon">🏠</text>
+    <text class="label">首页</text>
+  </view>
+  <view class="nav-item" bindtap="goToCourses">
+    <text class="icon">📅</text>
+    <text class="label">课表</text>
+  </view>
+  <view class="nav-item active" bindtap="goToImport">
+    <text class="icon">📷</text>
+    <text class="label">导入</text>
+  </view>
+  <view class="nav-item" bindtap="goToProfile">
+    <text class="icon">👤</text>
+    <text class="label">我的</text>
+  </view>
+</view>
