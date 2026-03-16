@@ -1,4 +1,8 @@
 // 简单日期格式化
+const { importDefaultTemplateCourses } = require('../../utils/default-schedule-import');
+const { getLoginToken, getStoredUser, hasLoginSession, updateStoredUser, clearLoginSession } = require('../../utils/auth');
+const { callDbQuery, resolveCurrentUserId } = require('../../utils/cloud-db');
+
 function formatDate(fmt) {
   const d = new Date();
   const pad = n => String(n).padStart(2, '0');
@@ -386,6 +390,8 @@ Page({
     errorMsg: '',
     savedCount: 0,
     importDate: '',
+    shareImportKey: '',
+    shareImportLoading: false,
   },
 
   _rawOcrText: '',
@@ -396,10 +402,146 @@ Page({
 
   onShow() {},
 
+  onImportDefaultTemplate() {
+    if (!this.requireAuth()) return;
+
+    wx.showModal({
+      title: '导入默认课表',
+      content: '将使用默认模板课表覆盖你当前的课程，是否继续？',
+      confirmText: '立即导入',
+      confirmColor: '#c96f3b',
+      success: async (res) => {
+        if (!res.confirm) return;
+
+        wx.showLoading({ title: '导入中...' });
+        try {
+          const result = await importDefaultTemplateCourses();
+          wx.hideLoading();
+          wx.showModal({
+            title: '导入成功',
+            content: `默认课表已导入，共 ${result.count} 门课程。`,
+            showCancel: false,
+            success: () => {
+              wx.switchTab({ url: '/pages/courses/courses' });
+            }
+          });
+        } catch (error) {
+          wx.hideLoading();
+          wx.showToast({
+            title: error && error.message ? error.message : '默认课表导入失败',
+            icon: 'none'
+          });
+        }
+      }
+    });
+  },
+
   // 检查登录状态，未登录时提示并引导登录，返回是否已登录
+  onShareKeyInput(e) {
+    this.setData({
+      shareImportKey: String(e.detail.value || '').trim().toUpperCase()
+    });
+  },
+
+  async onImportByShareKey() {
+    if (!this.requireAuth()) return;
+
+    const shareKey = (this.data.shareImportKey || '').trim().toUpperCase();
+    if (!shareKey) {
+      wx.showToast({ title: '请先输入分享密钥', icon: 'none' });
+      return;
+    }
+
+    this.setData({ shareImportLoading: true });
+    wx.showLoading({ title: '导入中...' });
+
+    try {
+      const currentUserId = await resolveCurrentUserId();
+      const shareRows = await callDbQuery(
+        'SELECT user_id FROM schedule_share_keys WHERE share_key = ? AND is_active = 1 LIMIT 1',
+        [shareKey]
+      );
+
+      if (!shareRows.length) {
+        throw new Error('未找到对应的分享密钥');
+      }
+
+      const sourceUserId = Number(shareRows[0].user_id);
+      if (sourceUserId === currentUserId) {
+        throw new Error('不能导入自己的分享课表');
+      }
+
+      const sourceCourses = await callDbQuery(
+        `SELECT course_name, teacher AS teacher_name, location AS classroom, weekday, start_section, end_section, start_time, end_time, start_week, end_week
+         FROM courses
+         WHERE user_id = ?
+         ORDER BY weekday ASC, start_section ASC`,
+        [sourceUserId]
+      );
+
+      if (!sourceCourses.length) {
+        throw new Error('这个密钥对应的用户还没有可导入的课表');
+      }
+
+      await callDbQuery('DELETE FROM courses WHERE user_id = ?', [currentUserId]);
+
+      const placeholders = sourceCourses.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+      const params = [];
+
+      sourceCourses.forEach((course) => {
+        params.push(
+          currentUserId,
+          course.course_name,
+          course.teacher_name || '',
+          course.classroom || '',
+          Number(course.weekday),
+          Number(course.start_section),
+          Number(course.end_section),
+          course.start_time || null,
+          course.end_time || null,
+          Number(course.start_week),
+          Number(course.end_week)
+        );
+      });
+
+      await callDbQuery(
+        `INSERT INTO courses (
+          user_id, course_name, teacher, location,
+          weekday, start_section, end_section, start_time, end_time, start_week, end_week
+        ) VALUES ${placeholders}`,
+        params
+      );
+
+      await callDbQuery(
+        'UPDATE schedule_share_keys SET last_imported_at = CURRENT_TIMESTAMP WHERE share_key = ?',
+        [shareKey]
+      ).catch(() => null);
+
+      wx.hideLoading();
+      this.setData({
+        shareImportLoading: false,
+        shareImportKey: ''
+      });
+      wx.showModal({
+        title: '导入成功',
+        content: `已通过密钥导入 ${sourceCourses.length} 门课程到你的课表。`,
+        showCancel: false,
+        success: () => {
+          wx.switchTab({ url: '/pages/courses/courses' });
+        }
+      });
+    } catch (error) {
+      wx.hideLoading();
+      this.setData({ shareImportLoading: false });
+      wx.showToast({
+        title: error && error.message ? error.message : '导入失败',
+        icon: 'none'
+      });
+    }
+  },
+
   requireAuth() {
-    const token = wx.getStorageSync('token');
-    if (!token) {
+    if (!hasLoginSession() || !getLoginToken()) {
       wx.showModal({
         title: '需要登录',
         content: '导入课表需要先登录，是否前往登录？',
@@ -947,13 +1089,13 @@ Page({
       return;
     }
 
-    const token = wx.getStorageSync('token');
+    const token = getLoginToken();
     if (!token) {
       this.requireAuth();
       return;
     }
 
-    const user = wx.getStorageSync('user');
+    const user = getStoredUser();
     if (user && user.id) {
       this.saveCourses(user.id, courses);
     } else {
@@ -970,10 +1112,11 @@ Page({
           const result = res.result;
           if (result && result.success && result.data && result.data.length > 0) {
             const userId = result.data[0].id;
-            wx.setStorageSync('user', Object.assign({}, user || {}, { id: userId }));
+            updateStoredUser({ id: userId });
             wx.hideLoading();
             this.saveCourses(userId, courses);
           } else {
+            clearLoginSession();
             wx.hideLoading();
             wx.showToast({ title: '用户信息异常，请重新登录', icon: 'none' });
             setTimeout(() => wx.navigateTo({ url: '/pages/login/login' }), 1500);
@@ -992,7 +1135,7 @@ Page({
     this.setData({ status: 'saving' });
     wx.showLoading({ title: '正在导入...' });
 
-    const token = wx.getStorageSync('token') || '';
+    const token = getLoginToken() || '';
     const importDate = formatDate('YYYY-MM-DD HH:mm:ss');
 
     // 先删除该用户的旧课程，避免重复导入
@@ -1073,8 +1216,9 @@ Page({
   },
 
   // 底部导航
-  goToIndex() { wx.navigateTo({ url: '/pages/index/index' }); },
-  goToCourses() { wx.navigateTo({ url: '/pages/courses/courses' }); },
+  goToIndex() { wx.switchTab({ url: '/pages/index/index' }); },
+  goToCourses() { wx.switchTab({ url: '/pages/courses/courses' }); },
+  goToSettings() { wx.navigateTo({ url: '/pages/settings/settings' }); },
   goToImport() { },
-  goToProfile() { wx.navigateTo({ url: '/pages/profile/profile' }); },
+  goToProfile() { wx.switchTab({ url: '/pages/profile/profile' }); },
 });

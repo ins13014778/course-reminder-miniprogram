@@ -16,3 +16,8 @@ export const importApi = {
 export const reminderApi = {
   getList: () => request.get('/admin/reminders'),
 }
+
+export const announcementApi = {
+  getCurrent: () => request.get('/admin/announcements/current'),
+  saveCurrent: (data: any) => request.put('/admin/announcements/current', data),
+}

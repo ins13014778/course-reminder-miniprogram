@@ -1,5 +1,12 @@
 {
   "mcpServers": {
+    "Vibma": {
+      "command": "node",
+      "args": [
+        "E:\\tools\\Vibma\\packages\\core\\dist\\mcp.cjs",
+        "--edit"
+      ]
+    },
     "cloudbase": {
       "command": "npx",
       "args": ["@cloudbase/cloudbase-mcp@latest"],

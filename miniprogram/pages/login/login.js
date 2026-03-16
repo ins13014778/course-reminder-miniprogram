@@ -1,4 +1,5 @@
 const authService = require('../../services/auth');
+const { setLoginSession } = require('../../utils/auth');
 
 Page({
   data: {},
@@ -16,8 +17,7 @@ Page({
           const result = await authService.authService.login(userInfo);
 
           // 3. 保存用户信息
-          wx.setStorageSync('user', result.user);
-          wx.setStorageSync('token', result.token);
+          setLoginSession(result.user, result.token);
 
           wx.hideLoading();
           wx.showToast({ title: '登录成功', icon: 'success' });

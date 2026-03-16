@@ -1,19 +1,47 @@
 <view class="page-shell">
   <view class="headline-card">
-    <text class="eyebrow">OCR IMPORT</text>
-    <text class="headline-title">拍照导入课表</text>
-    <text class="headline-sub">尽量拍到完整边框和网格，识别会更稳。</text>
+    <text class="eyebrow">IMPORT</text>
+    <text class="headline-title">导入你的课程表</text>
+    <text class="headline-sub">支持拍照 OCR 导入，也支持通过同学分享的密钥一键复制课表。</text>
+  </view>
+
+  <view class="template-entry-card">
+    <view class="entry-copy">
+      <text class="entry-title">默认课程表模板</text>
+      <text class="entry-sub">如果你现在只想先体验页面，也可以先导入一份内置模板课表。</text>
+    </view>
+    <view class="entry-actions">
+      <view class="cta-button cta-secondary entry-btn" bindtap="goToSettings">设置</view>
+      <view class="cta-button cta-primary entry-btn" bindtap="onImportDefaultTemplate">默认课表</view>
+    </view>
+  </view>
+
+  <view class="share-import-card">
+    <view class="entry-copy">
+      <text class="entry-title">密钥导入同学课表</text>
+      <text class="entry-sub">让对方先在设置页生成分享密钥，你把密钥填进来后就能一键导入。</text>
+    </view>
+    <input
+      class="share-input"
+      placeholder="请输入分享密钥"
+      maxlength="10"
+      value="{{shareImportKey}}"
+      bindinput="onShareKeyInput"
+    />
+    <view class="cta-button cta-primary share-import-btn" bindtap="onImportByShareKey">
+      {{shareImportLoading ? '导入中...' : '按密钥导入'}}
+    </view>
   </view>
 
   <view wx:if="{{status === 'idle'}}" class="upload-card" bindtap="onChooseImage">
     <text class="upload-mark">SCAN</text>
     <text class="upload-title">点击上传课程表照片</text>
-    <text class="upload-sub">支持拍照或从相册选择，导入前会先给你预览。</text>
+    <text class="upload-sub">支持拍照或从相册选择，系统会先识别再让你确认导入。</text>
   </view>
 
   <view wx:if="{{status === 'uploading' || status === 'parsing' || status === 'saving'}}" class="status-card">
     <view class="spinner"></view>
-    <text class="status-title" wx:if="{{status === 'uploading'}}">正在识别课表...</text>
+    <text class="status-title" wx:if="{{status === 'uploading'}}">正在识别课程表...</text>
     <text class="status-title" wx:if="{{status === 'parsing'}}">正在整理课程信息...</text>
     <text class="status-title" wx:if="{{status === 'saving'}}">正在保存课程...</text>
     <text class="status-sub">请稍候，这一步通常只需要几秒钟。</text>
@@ -23,7 +51,7 @@
     <view class="summary-card">
       <text class="summary-mark">READY</text>
       <text class="summary-title">识别到 {{parsedCourses.length}} 门课程</text>
-      <text class="summary-sub">先确认内容，再一键导入到你的课表。</text>
+      <text class="summary-sub">确认无误后，再一键导入到你的课表。</text>
     </view>
 
     <view wx:if="{{parsedCourses.length > 0}}" class="preview-card">
@@ -33,8 +61,8 @@
       </view>
       <view wx:for="{{parsedCourses}}" wx:key="index" class="preview-item">
         <text class="preview-name">{{item.course_name}}</text>
-        <text class="preview-meta">{{item.teacher_name || '待定教师'}} · {{item.classroom || '待定地点'}}</text>
-        <text class="preview-meta">周{{item.weekdayName}} · 第{{item.start_section}}-{{item.end_section}}节 · 第{{item.start_week}}-{{item.end_week}}周</text>
+        <text class="preview-meta">{{item.teacher_name || '待定老师'}} | {{item.classroom || '待定地点'}}</text>
+        <text class="preview-meta">周{{item.weekdayName}} | 第{{item.start_section}}-{{item.end_section}}节 | 第{{item.start_week}}-{{item.end_week}}周</text>
       </view>
     </view>
 
@@ -55,26 +83,7 @@
   <view wx:if="{{status === 'failed'}}" class="status-card failed">
     <text class="upload-mark">FAIL</text>
     <text class="status-title">这次识别没有成功</text>
-    <text class="status-sub">{{errorMsg || '你可以重新上传更清晰的课表照片。'}}</text>
+    <text class="status-sub">{{errorMsg || '你可以重新上传更清晰的课程表照片。'}}</text>
     <view class="cta-button cta-primary solo" bindtap="onRetry">重新上传</view>
-  </view>
-</view>
-
-<view class="bottom-nav">
-  <view class="nav-item" bindtap="goToIndex">
-    <text class="nav-icon">⌂</text>
-    <text class="nav-label">首页</text>
-  </view>
-  <view class="nav-item" bindtap="goToCourses">
-    <text class="nav-icon">▦</text>
-    <text class="nav-label">课表</text>
-  </view>
-  <view class="nav-item active" bindtap="goToImport">
-    <text class="nav-icon">◫</text>
-    <text class="nav-label">导入</text>
-  </view>
-  <view class="nav-item" bindtap="goToProfile">
-    <text class="nav-icon">●</text>
-    <text class="nav-label">我的</text>
   </view>
 </view>

@@ -1,3 +1,5 @@
+const { getLoginToken, hasLoginSession, updateStoredUser, clearLoginSession } = require('../../utils/auth');
+
 Page({
   data: {
     user: {},
@@ -13,8 +15,8 @@ Page({
   },
 
   loadUserInfo() {
-    const token = wx.getStorageSync('token');
-    if (!token) {
+    const token = getLoginToken();
+    if (!hasLoginSession() || !token) {
       this.setData({ user: {}, isLoggedIn: false });
       return;
     }
@@ -28,6 +30,7 @@ Page({
       success: (res) => {
         const row = res.result?.data?.[0];
         if (!res.result?.success || !row) {
+          clearLoginSession();
           this.setData({ user: {}, isLoggedIn: false });
           return;
         }
@@ -45,10 +48,11 @@ Page({
           avatarLetter: nickname.trim().charAt(0) || '我'
         };
 
-        wx.setStorageSync('user', user);
+        updateStoredUser(user);
         this.setData({ user, isLoggedIn: true });
       },
       fail: () => {
+        clearLoginSession();
         this.setData({ user: {}, isLoggedIn: false });
       }
     });
@@ -127,7 +131,7 @@ Page({
   },
 
   updateUserInfo(fields, successTitle = '保存成功') {
-    const token = wx.getStorageSync('token');
+    const token = getLoginToken();
     if (!token) return;
 
     const updates = Object.keys(fields).map((key) => `${key} = ?`).join(', ');
@@ -201,7 +205,7 @@ Page({
       content: '确定要退出当前账号吗？',
       success: (res) => {
         if (res.confirm) {
-          wx.clearStorageSync();
+          clearLoginSession();
           this.setData({ user: {}, isLoggedIn: false });
           wx.showToast({ title: '已退出登录', icon: 'success' });
         }
@@ -209,9 +213,10 @@ Page({
     });
   },
 
-  goToIndex() { wx.navigateTo({ url: '/pages/index/index' }); },
-  goToCourses() { wx.navigateTo({ url: '/pages/courses/courses' }); },
-  goToImport() { wx.navigateTo({ url: '/pages/import/import' }); },
+  goToIndex() { wx.switchTab({ url: '/pages/index/index' }); },
+  goToCourses() { wx.switchTab({ url: '/pages/courses/courses' }); },
+  goToImport() { wx.switchTab({ url: '/pages/import/import' }); },
   goToProfile() {},
+  goToNotes() { wx.navigateTo({ url: '/pages/notes/notes' }); },
   goToSettings() { wx.navigateTo({ url: '/pages/settings/settings' }); }
 });

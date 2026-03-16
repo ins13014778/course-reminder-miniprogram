@@ -107,8 +107,16 @@
         <text class="section-title">操作</text>
       </view>
 
+      <view class="menu-item" bindtap="goToNotes">
+        <text class="menu-label">我的笔记</text>
+        <text class="menu-arrow">›</text>
+      </view>
       <view class="menu-item" bindtap="onClearCourses">
         <text class="menu-label">清空课表</text>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-item" bindtap="goToSettings">
+        <text class="menu-label">默认课表</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" bindtap="goToSettings">
@@ -127,23 +135,4 @@
 
     <view class="cta-button cta-outline logout-btn" bindtap="onLogout">退出登录</view>
   </block>
-</view>
-
-<view class="bottom-nav">
-  <view class="nav-item" bindtap="goToIndex">
-    <text class="icon">⌂</text>
-    <text class="label">首页</text>
-  </view>
-  <view class="nav-item" bindtap="goToCourses">
-    <text class="icon">▦</text>
-    <text class="label">课表</text>
-  </view>
-  <view class="nav-item" bindtap="goToImport">
-    <text class="icon">◫</text>
-    <text class="label">导入</text>
-  </view>
-  <view class="nav-item active" bindtap="goToProfile">
-    <text class="icon">●</text>
-    <text class="label">我的</text>
-  </view>
 </view>

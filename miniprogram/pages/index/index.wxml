@@ -3,38 +3,52 @@
     <view class="hero-top">
       <view>
         <text class="eyebrow">COURSE REMINDER</text>
-        <text class="hero-title">今天不是赶课，</text>
-        <text class="hero-title">是掌控节奏。</text>
+        <text class="hero-title">{{todayCourses.length ? '今天按节奏上课。' : '今天不是赶课，是掌控节奏。'}}</text>
       </view>
       <view class="hero-mark">CR</view>
     </view>
 
-    <view class="hero-profile" wx:if="{{isLoggedIn}}">
-      <image class="avatar" src="{{user.avatar_url || user.avatar}}" wx:if="{{user.avatar_url || user.avatar}}" mode="aspectFill" />
-      <view class="avatar-placeholder" wx:else>我</view>
-      <view class="hero-user-copy">
+    <view wx:if="{{isLoggedIn}}" class="hero-profile" bindtap="goToProfile">
+      <image class="avatar" src="{{user.avatar}}" wx:if="{{user.avatar}}" mode="aspectFill" />
+      <view class="avatar-placeholder" wx:else>{{user.avatarLetter || '我'}}</view>
+      <view>
         <text class="hero-greeting">欢迎回来</text>
         <text class="hero-name">{{user.nickname || '同学'}}</text>
       </view>
     </view>
 
-    <view class="hero-profile guest" wx:else bindtap="goToLogin">
+    <view wx:else class="hero-profile guest" bindtap="goToLogin">
       <view class="avatar-placeholder">登</view>
-      <view class="hero-user-copy">
+      <view>
         <text class="hero-greeting">课程提醒系统</text>
         <text class="hero-name">登录查看更多</text>
       </view>
     </view>
   </view>
 
-  <view class="week-section" wx:if="{{isLoggedIn}}">
+  <view wx:if="{{announcement}}" class="announcement-card">
+    <view class="section-head">
+      <text class="section-title">最新公告</text>
+      <text class="section-tag">{{announcement.updatedAtText || '实时更新'}}</text>
+    </view>
+    <text class="announcement-title">{{announcement.title}}</text>
+    <text class="announcement-content">{{announcement.content}}</text>
+  </view>
+
+  <view class="week-section">
     <view class="section-head">
       <text class="section-title">学期周次</text>
       <text class="section-tag">第 {{currentWeek}} 周</text>
     </view>
-    <scroll-view scroll-x class="week-scroll" enable-flex="true">
+    <scroll-view class="week-scroll" scroll-x>
       <view class="week-track">
-        <view wx:for="{{[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]}}" wx:key="*this" class="week-pill {{currentWeek === item ? 'active' : ''}}" bindtap="onWeekChange" data-week="{{item}}">
+        <view
+          wx:for="{{[1,2,3,4,5,6,7]}}"
+          wx:key="*this"
+          class="week-pill {{currentWeek === item ? 'active' : ''}}"
+          data-week="{{item}}"
+          bindtap="onWeekChange"
+        >
           {{item}}周
         </view>
       </view>
@@ -46,18 +60,20 @@
       <text class="section-title">今日课程</text>
       <text class="section-tag">{{weekdayText}}</text>
     </view>
+    <text wx:if="{{usingTemplateSchedule}}" class="template-note">当前显示的是默认模板课表，可在提醒设置中关闭。</text>
 
-    <view wx:if="{{todayCourses.length > 0}}" class="today-list">
+    <view wx:if="{{todayCourses.length}}" class="today-list">
       <view wx:for="{{todayCourses}}" wx:key="id" class="today-item">
         <view class="time-box">
-          <text class="time-start">{{item.startTime || '08:00'}}</text>
-          <text class="time-end">{{item.endTime || '09:35'}}</text>
+          <text class="time-start">{{item.startTime}}</text>
+          <text class="time-end">{{item.endTime}}</text>
         </view>
-        <view class="today-main">
+        <view>
           <text class="course-name">{{item.courseName}}</text>
           <view class="meta-row">
-            <text class="meta-chip" wx:if="{{item.teacherName}}">{{item.teacherName}}</text>
-            <text class="meta-chip" wx:if="{{item.classroom}}">{{item.classroom}}</text>
+            <text class="meta-chip">{{item.classroom || '待定'}}</text>
+            <text wx:if="{{item.teacherName}}" class="meta-chip">{{item.teacherName}}</text>
+            <text wx:if="{{item.isTemplate}}" class="meta-chip">模板课表</text>
           </view>
         </view>
       </view>
@@ -65,9 +81,8 @@
 
     <view wx:else class="empty-box">
       <text class="empty-mark">TABLE</text>
-      <text class="empty-title" wx:if="{{isLoggedIn}}">今天没有课程安排</text>
-      <text class="empty-title" wx:else>登录后查看你的今日课程</text>
-      <text class="empty-sub">空出来的时间，也可以过得很从容。</text>
+      <text class="empty-title">{{isLoggedIn ? '今天没有课程安排' : '登录后查看你的今日课程'}}</text>
+      <text class="empty-sub">{{isLoggedIn ? '空出来的时间，也可以过得很从容。' : '安排好的时间，也可以过得很从容。'}}</text>
       <view wx:if="{{!isLoggedIn}}" class="cta-button cta-soft" bindtap="goToLogin">去登录</view>
     </view>
   </view>
@@ -78,32 +93,13 @@
     <view class="cta-button cta-secondary" bindtap="goToSettings">提醒设置</view>
   </view>
 
-  <view class="progress-card" wx:if="{{isLoggedIn}}">
+  <view class="progress-card">
     <view class="section-head">
       <text class="section-title">学期进度</text>
       <text class="section-tag">{{currentWeek}} / {{totalWeeks}}</text>
     </view>
     <view class="progress-rail">
-      <view class="progress-fill" style="width: {{currentWeek / totalWeeks * 100}}%"></view>
+      <view class="progress-fill" style="width: {{(currentWeek / totalWeeks) * 100}}%;"></view>
     </view>
-  </view>
-</view>
-
-<view class="bottom-nav">
-  <view class="nav-item active" bindtap="goToIndex">
-    <text class="nav-icon">⌂</text>
-    <text class="nav-label">首页</text>
-  </view>
-  <view class="nav-item" bindtap="goToCourses">
-    <text class="nav-icon">▦</text>
-    <text class="nav-label">课表</text>
-  </view>
-  <view class="nav-item" bindtap="goToImport">
-    <text class="nav-icon">◫</text>
-    <text class="nav-label">导入</text>
-  </view>
-  <view class="nav-item" bindtap="goToProfile">
-    <text class="nav-icon">●</text>
-    <text class="nav-label">我的</text>
   </view>
 </view>

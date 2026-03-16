@@ -2,7 +2,7 @@
   <view class="hero-card">
     <text class="eyebrow">REMINDER</text>
     <text class="hero-title">提醒设置</text>
-    <text class="hero-sub">把提醒时间调成适合你的节奏，课前会更从容。</text>
+    <text class="hero-sub">把提醒时间调成适合你的节奏，也可以决定是否开启默认模板课表和分享密钥。</text>
   </view>
 
   <view class="settings-card">
@@ -22,7 +22,7 @@
       <picker mode="selector" range="{{remindOptions}}" value="{{remindMinutesIndex}}" bindchange="onMinutesChange">
         <view class="picker-card">
           <text class="picker-value">{{remindMinutes}} 分钟</text>
-          <text class="picker-arrow">›</text>
+          <text class="picker-arrow">></text>
         </view>
       </picker>
     </view>
@@ -34,15 +34,43 @@
       </view>
       <switch checked="{{remindWeekends}}" color="#1e3b2f" bindchange="onToggleWeekends" />
     </view>
+
+    <view class="setting-row">
+      <view class="copy-block">
+        <text class="setting-title">启用默认模板课表</text>
+        <text class="setting-desc">当你还没有导入自己的课表时，可以先展示默认模板。</text>
+      </view>
+      <switch checked="{{defaultTemplateEnabled}}" color="#c96f3b" bindchange="onToggleDefaultTemplate" />
+    </view>
   </view>
 
   <view class="preview-card">
-    <text class="preview-label">当前预览</text>
+    <text class="preview-label">CURRENT</text>
     <text class="preview-title" wx:if="{{remindEnabled}}">将在上课前 {{remindMinutes}} 分钟提醒你</text>
     <text class="preview-title" wx:else>当前已关闭课程提醒</text>
     <text class="preview-sub" wx:if="{{remindEnabled && remindWeekends}}">工作日和周末课程都会提醒。</text>
     <text class="preview-sub" wx:elif="{{remindEnabled}}">仅工作日课程参与提醒。</text>
     <text class="preview-sub" wx:else>你仍然可以随时回来重新开启。</text>
+    <text class="preview-sub template-preview" wx:if="{{defaultTemplateEnabled}}">默认模板课表已开启，但不会覆盖你已经导入的真实课表。</text>
+    <text class="preview-sub template-preview" wx:else>默认模板课表当前关闭。</text>
+  </view>
+
+  <view class="share-card">
+    <text class="preview-label">SCHEDULE SHARE</text>
+    <text class="preview-title">分享你已经导入好的课表</text>
+    <text class="preview-sub">生成随机密钥后发给同学，对方在导入页输入密钥就能复制你的当前课表。</text>
+
+    <view class="share-key-box {{shareKeyReady ? 'ready' : ''}}">
+      <text class="share-key-value">{{shareKeyReady ? shareKey : '暂未生成分享密钥'}}</text>
+      <text class="share-key-tip">{{shareKeyReady ? '重新生成后，旧密钥会立即失效。' : '登录后即可生成新的课表分享密钥。'}}</text>
+    </view>
+
+    <view class="share-actions">
+      <view class="share-btn share-btn-primary" bindtap="onGenerateShareKey">
+        {{shareKeyLoading ? '生成中...' : (shareKeyReady ? '重新生成' : '生成密钥')}}
+      </view>
+      <view class="share-btn share-btn-secondary" bindtap="onCopyShareKey">复制密钥</view>
+    </view>
   </view>
 
   <button class="save-btn" bindtap="onSave">保存设置</button>

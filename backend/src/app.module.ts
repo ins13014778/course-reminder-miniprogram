@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
+import { AnnouncementsModule } from './announcements/announcements.module';
 import { CoursesModule } from './courses/courses.module';
 import { ImportModule } from './import/import.module';
 import { RemindersModule } from './reminders/reminders.module';
@@ -24,6 +25,7 @@ import { RemindersModule } from './reminders/reminders.module';
     }),
     ScheduleModule.forRoot(),
     AuthModule,
+    AnnouncementsModule,
     CoursesModule,
     ImportModule,
     RemindersModule,

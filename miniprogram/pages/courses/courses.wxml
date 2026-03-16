@@ -6,12 +6,19 @@
   </view>
 
   <view class="tabs-card">
-    <view wx:for="{{['周一','周二','周三','周四','周五','周六','周日']}}" wx:for-index="idx" wx:key="idx" class="tab-pill {{selectedWeekday === idx + 1 ? 'active' : ''}}" bindtap="onWeekdayChange" data-weekday="{{idx + 1}}">
+    <view
+      wx:for="{{weekdayLabels}}"
+      wx:key="index"
+      wx:for-index="index"
+      class="tab-pill {{selectedWeekday === index + 1 ? 'active' : ''}}"
+      bindtap="onWeekdayChange"
+      data-weekday="{{index + 1}}"
+    >
       {{item}}
     </view>
   </view>
 
-  <view wx:if="{{!isLoggedIn}}" class="empty-card">
+  <view wx:if="{{!isLoggedIn && !usingTemplateSchedule}}" class="empty-card">
     <text class="empty-mark">TABLE</text>
     <text class="empty-title">登录后查看你的完整课表</text>
     <text class="empty-sub">课程会按星期收好，也能随时修改。</text>
@@ -23,13 +30,23 @@
   </view>
 
   <view wx:else class="course-stack">
+    <view wx:if="{{usingTemplateSchedule}}" class="template-tip">当前显示的是默认模板课表，可在提醒设置中关闭。</view>
+
     <view wx:if="{{courses.length === 0}}" class="empty-card compact">
       <text class="empty-mark">REST</text>
       <text class="empty-title">这一天没有课程安排</text>
       <text class="empty-sub">右下角可以手动补充课程。</text>
     </view>
 
-    <view wx:for="{{courses}}" wx:key="id" class="course-card" bindtap="onCourseClick" bindlongpress="onDeleteCourse" data-course="{{item}}" data-id="{{item.id}}">
+    <view
+      wx:for="{{courses}}"
+      wx:key="id"
+      class="course-card"
+      bindtap="onCourseClick"
+      bindlongpress="onDeleteCourse"
+      data-course="{{item}}"
+      data-id="{{item.id}}"
+    >
       <view class="accent-bar" style="background: {{item.color}}"></view>
       <view class="course-main">
         <view class="course-head">
@@ -41,9 +58,10 @@
         </view>
 
         <view class="meta-row">
-          <text class="meta-chip" wx:if="{{item.teacherName}}">{{item.teacherName}}</text>
+          <text wx:if="{{item.teacherName}}" class="meta-chip">{{item.teacherName}}</text>
           <text class="meta-chip">{{item.classroom || '待定地点'}}</text>
           <text class="meta-chip">第{{item.startWeek}}-{{item.endWeek}}周</text>
+          <text wx:if="{{item.isTemplate}}" class="meta-chip">模板课表</text>
         </view>
       </view>
     </view>
@@ -69,8 +87,8 @@
       </view>
 
       <view class="editor-block">
-        <text class="editor-label">教师</text>
-        <input class="editor-input" value="{{editorCourse.teacherName}}" data-field="teacherName" bindinput="onEditorFieldChange" placeholder="请输入教师姓名" />
+        <text class="editor-label">老师</text>
+        <input class="editor-input" value="{{editorCourse.teacherName}}" data-field="teacherName" bindinput="onEditorFieldChange" placeholder="请输入老师姓名" />
       </view>
 
       <view class="editor-block">
@@ -99,6 +117,24 @@
       </view>
 
       <view class="editor-block">
+        <text class="editor-label">时间模式</text>
+        <view class="choice-row">
+          <view class="choice-pill {{!editorCourse.useCustomTime ? 'active' : ''}}" data-mode="slot" bindtap="onTimeModeChange">跟随节次</view>
+          <view class="choice-pill {{editorCourse.useCustomTime ? 'active' : ''}}" data-mode="custom" bindtap="onTimeModeChange">自定义时间</view>
+        </view>
+      </view>
+
+      <view wx:if="{{editorCourse.useCustomTime}}" class="editor-block">
+        <text class="editor-label">具体时间</text>
+        <view class="week-input-row">
+          <input class="editor-input week-input" value="{{editorCourse.customStartTime}}" data-field="customStartTime" bindinput="onCustomTimeChange" placeholder="08:30" />
+          <text class="week-join">-</text>
+          <input class="editor-input week-input" value="{{editorCourse.customEndTime}}" data-field="customEndTime" bindinput="onCustomTimeChange" placeholder="10:05" />
+        </view>
+        <text class="editor-hint">支持输入 08:30 这样的时间格式。</text>
+      </view>
+
+      <view class="editor-block">
         <text class="editor-label">周次</text>
         <view class="week-input-row">
           <input class="editor-input week-input" type="number" value="{{editorCourse.startWeek}}" data-field="startWeek" bindinput="onEditorFieldChange" />
@@ -112,24 +148,5 @@
         <view class="editor-btn editor-save" bindtap="saveEditorCourse">保存</view>
       </view>
     </view>
-  </view>
-</view>
-
-<view class="bottom-nav">
-  <view class="nav-item" bindtap="goToIndex">
-    <text class="nav-icon">⌂</text>
-    <text class="nav-label">首页</text>
-  </view>
-  <view class="nav-item active" bindtap="goToCourses">
-    <text class="nav-icon">▦</text>
-    <text class="nav-label">课表</text>
-  </view>
-  <view class="nav-item" bindtap="goToImport">
-    <text class="nav-icon">◫</text>
-    <text class="nav-label">导入</text>
-  </view>
-  <view class="nav-item" bindtap="goToProfile">
-    <text class="nav-icon">●</text>
-    <text class="nav-label">我的</text>
   </view>
 </view>

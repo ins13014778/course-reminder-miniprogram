@@ -9,7 +9,8 @@
 
 .hero-card,
 .settings-card,
-.preview-card {
+.preview-card,
+.share-card {
   border-radius: 28rpx;
   border: 1rpx solid rgba(30, 59, 47, 0.08);
   background: rgba(255, 251, 245, 0.92);
@@ -18,7 +19,8 @@
 
 .hero-card,
 .settings-card,
-.preview-card {
+.preview-card,
+.share-card {
   padding: 26rpx;
 }
 
@@ -112,6 +114,10 @@
   margin-top: 20rpx;
 }
 
+.share-card {
+  margin-top: 20rpx;
+}
+
 .preview-label {
   display: block;
   font-size: 18rpx;
@@ -133,6 +139,70 @@
   font-size: 24rpx;
   color: #857a67;
   line-height: 1.7;
+}
+
+.template-preview {
+  color: #8b6e59;
+}
+
+.share-key-box {
+  margin-top: 18rpx;
+  padding: 20rpx;
+  border-radius: 22rpx;
+  background: rgba(30, 59, 47, 0.04);
+  border: 1rpx dashed rgba(30, 59, 47, 0.16);
+}
+
+.share-key-box.ready {
+  background: rgba(201, 111, 59, 0.08);
+  border-style: solid;
+  border-color: rgba(201, 111, 59, 0.22);
+}
+
+.share-key-value {
+  display: block;
+  font-size: 42rpx;
+  font-weight: 700;
+  letter-spacing: 8rpx;
+  color: #1e2b23;
+  word-break: break-all;
+}
+
+.share-key-tip {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  line-height: 1.7;
+  color: #857a67;
+}
+
+.share-actions {
+  margin-top: 18rpx;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14rpx;
+}
+
+.share-btn {
+  min-height: 82rpx;
+  padding: 0 20rpx;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.share-btn-primary {
+  background: #1e3b2f;
+  color: #fff8ef;
+}
+
+.share-btn-secondary {
+  background: rgba(30, 59, 47, 0.05);
+  border: 1rpx solid rgba(30, 59, 47, 0.08);
+  color: #1e3b2f;
 }
 
 .save-btn {

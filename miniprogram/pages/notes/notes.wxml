@@ -1,0 +1,82 @@
+<view class="page-shell">
+  <view class="hero-card">
+    <text class="eyebrow">NOTES</text>
+    <text class="hero-title">课程笔记</text>
+    <text class="hero-sub">随手记录课堂要点、作业提醒和灵感，支持图片和正文。</text>
+  </view>
+
+  <view class="toolbar-card">
+    <view class="toolbar-copy">
+      <text class="toolbar-title">你的学习记录</text>
+      <text class="toolbar-sub">{{isLoggedIn ? '可以发布、修改和删除自己发的笔记。' : '登录后即可发布自己的笔记。'}}</text>
+    </view>
+    <view class="cta-button cta-primary toolbar-btn" bindtap="openAddEditor">发笔记</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="empty-card">
+    <text class="empty-title">正在加载笔记...</text>
+  </view>
+
+  <view wx:elif="{{notes.length === 0}}" class="empty-card">
+    <text class="empty-mark">NOTE</text>
+    <text class="empty-title">还没有人发布笔记</text>
+    <text class="empty-sub">你可以先发第一条，把这门课的重要内容记下来。</text>
+  </view>
+
+  <view wx:else class="note-stack">
+    <view wx:for="{{notes}}" wx:key="id" class="note-card">
+      <view class="note-head">
+        <view class="author-wrap">
+          <image wx:if="{{item.avatarUrl}}" class="author-avatar" src="{{item.avatarUrl}}" mode="aspectFill" />
+          <view wx:else class="author-avatar placeholder">{{item.avatarLetter}}</view>
+          <view>
+            <text class="author-name">{{item.nickname}}</text>
+            <text class="note-time">{{item.updatedAt}}</text>
+          </view>
+        </view>
+
+        <view wx:if="{{item.isMine}}" class="note-actions">
+          <text class="note-link" bindtap="openEditEditor" data-note="{{item}}">编辑</text>
+          <text class="note-link danger" bindtap="onDeleteNote" data-id="{{item.id}}">删除</text>
+        </view>
+      </view>
+
+      <text class="note-content">{{item.content}}</text>
+      <image wx:if="{{item.imageUrl}}" class="note-image" src="{{item.imageUrl}}" mode="widthFix" />
+    </view>
+  </view>
+
+  <view wx:if="{{editorVisible}}" class="editor-mask" bindtap="closeEditor">
+    <view class="editor-panel" catchtap="noop">
+      <view class="editor-top">
+        <view>
+          <text class="editor-eyebrow">NOTE EDITOR</text>
+          <text class="editor-title">{{editorTitle}}</text>
+        </view>
+        <text class="editor-close" bindtap="closeEditor">×</text>
+      </view>
+
+      <textarea
+        class="editor-textarea"
+        maxlength="500"
+        placeholder="写下今天的课堂重点、作业提醒或你的想法..."
+        value="{{editorForm.content}}"
+        bindinput="onContentInput"
+      />
+
+      <view class="image-block">
+        <image wx:if="{{editorForm.imageUrl}}" class="editor-image" src="{{editorForm.imageUrl}}" mode="aspectFill" />
+        <view wx:else class="image-placeholder">可选上传一张课堂照片或资料图</view>
+        <view class="image-actions">
+          <view class="cta-button cta-secondary image-btn" bindtap="chooseImage">上传图片</view>
+          <view wx:if="{{editorForm.imageUrl}}" class="cta-button cta-soft image-btn" bindtap="removeImage">移除图片</view>
+        </view>
+      </view>
+
+      <view class="editor-actions">
+        <view class="cta-button cta-secondary" bindtap="closeEditor">取消</view>
+        <view class="cta-button cta-primary" bindtap="saveNote">保存笔记</view>
+      </view>
+    </view>
+  </view>
+</view>
