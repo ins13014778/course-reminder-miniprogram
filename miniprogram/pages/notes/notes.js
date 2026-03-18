@@ -12,8 +12,8 @@ Page({
     editorForm: {
       id: null,
       content: '',
-      imageUrl: ''
-    }
+      imageUrl: '',
+    },
   },
 
   onLoad() {
@@ -37,7 +37,7 @@ Page({
           }
           reject(new Error((result && result.message) || '数据库操作失败'));
         },
-        fail: reject
+        fail: reject,
       });
     });
   },
@@ -77,14 +77,21 @@ Page({
       }
 
       const rows = await this.callDbQuery(
-        `SELECT n.id, n.user_id, n.content, n.image_url, n.created_at, n.updated_at,
-                u.nickname, u.avatar_url
-           FROM notes n
-           LEFT JOIN users u ON u.id = n.user_id
-          WHERE n.user_id = ?
-          ORDER BY n.updated_at DESC, n.id DESC`
-        ,
-        [currentUserId]
+        `SELECT
+            n.id,
+            n.user_id,
+            n.content,
+            n.image_url,
+            n.created_at,
+            n.updated_at,
+            u.nickname,
+            u.avatar_url
+         FROM notes n
+         LEFT JOIN users u ON u.id = n.user_id
+         WHERE n.user_id = ?
+           AND n.status = 'visible'
+         ORDER BY n.updated_at DESC, n.id DESC`,
+        [currentUserId],
       );
 
       const notes = rows.map((item) => ({
@@ -96,13 +103,13 @@ Page({
         avatarUrl: item.avatar_url || '',
         avatarLetter: (item.nickname || '我').trim().charAt(0) || '我',
         updatedAt: this.formatDateTime(item.updated_at || item.created_at),
-        isMine: !!currentUserId && Number(currentUserId) === Number(item.user_id)
+        isMine: Number(currentUserId) === Number(item.user_id),
       }));
 
       this.setData({ notes, loading: false });
     } catch (error) {
       this.setData({ loading: false });
-      wx.showToast({ title: '加载笔记失败', icon: 'none' });
+      wx.showToast({ title: (error && error.message) || '加载笔记失败', icon: 'none' });
     }
   },
 
@@ -124,7 +131,7 @@ Page({
         if (res.confirm) {
           wx.navigateTo({ url: '/pages/login/login' });
         }
-      }
+      },
     });
     return false;
   },
@@ -138,8 +145,8 @@ Page({
       editorForm: {
         id: null,
         content: '',
-        imageUrl: ''
-      }
+        imageUrl: '',
+      },
     });
   },
 
@@ -154,8 +161,8 @@ Page({
       editorForm: {
         id: note.id,
         content: note.content,
-        imageUrl: note.imageUrl || ''
-      }
+        imageUrl: note.imageUrl || '',
+      },
     });
   },
 
@@ -176,7 +183,7 @@ Page({
       const res = await wx.chooseMedia({
         count: 1,
         mediaType: ['image'],
-        sourceType: ['album', 'camera']
+        sourceType: ['album', 'camera'],
       });
       const tempFilePath = res.tempFiles && res.tempFiles[0] && res.tempFiles[0].tempFilePath;
       if (!tempFilePath) return;
@@ -186,7 +193,7 @@ Page({
       const cloudPath = `notes/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const uploadRes = await wx.cloud.uploadFile({
         cloudPath,
-        filePath: tempFilePath
+        filePath: tempFilePath,
       });
       wx.hideLoading();
       this.setData({ 'editorForm.imageUrl': uploadRes.fileID });
@@ -221,12 +228,12 @@ Page({
       if (this.data.editorMode === 'edit' && this.data.editorForm.id) {
         await this.callDbQuery(
           'UPDATE notes SET content = ?, image_url = ? WHERE id = ? AND user_id = ?',
-          [content, imageUrl, this.data.editorForm.id, userId]
+          [content, imageUrl, this.data.editorForm.id, userId],
         );
       } else {
         await this.callDbQuery(
-          'INSERT INTO notes (user_id, content, image_url) VALUES (?, ?, ?)',
-          [userId, content, imageUrl]
+          'INSERT INTO notes (user_id, content, image_url, status) VALUES (?, ?, ?, ?)',
+          [userId, content, imageUrl, 'visible'],
         );
       }
       wx.hideLoading();
@@ -235,7 +242,7 @@ Page({
       this.loadNotes();
     } catch (error) {
       wx.hideLoading();
-      wx.showToast({ title: '保存笔记失败', icon: 'none' });
+      wx.showToast({ title: (error && error.message) || '保存笔记失败', icon: 'none' });
     }
   },
 
@@ -253,15 +260,18 @@ Page({
         if (!res.confirm) return;
         try {
           wx.showLoading({ title: '删除中...' });
-          await this.callDbQuery('DELETE FROM notes WHERE id = ? AND user_id = ?', [note.id, this.data.currentUserId]);
+          await this.callDbQuery('DELETE FROM notes WHERE id = ? AND user_id = ?', [
+            note.id,
+            this.data.currentUserId,
+          ]);
           wx.hideLoading();
           wx.showToast({ title: '已删除', icon: 'success' });
           this.loadNotes();
         } catch (error) {
           wx.hideLoading();
-          wx.showToast({ title: '删除失败', icon: 'none' });
+          wx.showToast({ title: (error && error.message) || '删除失败', icon: 'none' });
         }
-      }
+      },
     });
-  }
+  },
 });

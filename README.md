@@ -1,83 +1,56 @@
-# 微信小程序课程提醒系统
+# 课表提醒项目
 
-一个基于 CloudBase 云开发的校园课程提醒工具，支持课程表 OCR 识别、课程管理和定时提醒。
+这是一个基于 CloudBase 的多端项目，当前包含：
 
-## 项目结构
+- `miniprogram/`: 微信小程序
+- `backend/`: NestJS API 与后台管理接口
+- `admin/`: Vue 3 + Vite 后台管理台
+- `docs/`: 项目文档与测试文档
 
-```
-course-reminder/
-├── miniprogram/          # 微信小程序端
-├── backend/              # NestJS 后端服务
-├── admin/                # Vue3 后台管理系统
-├── database/             # 数据库设计文件
-└── docs/                 # 项目文档
-```
+## 推荐先看
 
-## 技术栈
+后续接手或二开时，优先阅读这两份文档：
 
-### 小程序端
-- 微信原生小程序 + TypeScript
-- CloudBase SDK
+- [开发接手文档](./docs/developer-handoff.md)
+- [测试用例文档](./docs/test-cases.md)
 
-### 后端
-- Node.js + NestJS + TypeScript
-- MySQL (CloudBase 关系型数据库)
-- Redis (缓存)
-- 部署到 CloudBase 云托管
+## 本地启动
 
-### 后台管理
-- Vue 3 + Vite + TypeScript
-- Element Plus
-- 部署到 CloudBase 静态托管
+后端 API：
 
-## 快速开始
-
-### 1. 环境准备
-- Node.js >= 18
-- 微信开发者工具
-- CloudBase 环境
-
-### 2. 安装依赖
-```bash
-# 后端
-cd backend && npm install
-
-# 后台管理
-cd admin && npm install
+```powershell
+cd E:\codebese1\backend
+npm install
+npm run start:dev
 ```
 
-### 3. 配置
-参考各模块的 `.env.example` 文件配置环境变量
+后台管理页：
 
-### 4. 运行
-```bash
-# 后端开发
-cd backend && npm run start:dev
-
-# 后台管理开发
-cd admin && npm run dev
+```powershell
+cd E:\codebese1\admin
+npm install
+npm run dev
 ```
 
-## 核心功能
+访问地址：
 
-- ✅ 微信登录
-- ✅ 课程表照片上传
-- ✅ OCR 识别（可扩展）
-- ✅ 课程解析和确认
-- ✅ 课程管理
-- ✅ 定时提醒
-- ✅ 后台管理
+- Admin: `http://localhost:5173`
+- Backend API: `http://localhost:3000`
 
-## 部署
+## 当前重点能力
 
-项目部署到 CloudBase：
-- 后端：云托管（CloudRun）
-- 前端：静态网站托管
-- 数据库：CloudBase MySQL ✅ 已初始化
+- 用户登录与资料存储
+- 课表导入、编辑、分享导入
+- 订阅提醒
+- 公告发布
+- 后台治理能力
+  - 查看用户详情与完整课表
+  - 账号封禁
+  - 笔记权限封禁
+  - 分享密钥权限封禁
+  - 违规笔记下架 / 恢复
+  - 分享密钥禁用 / 恢复
 
-### 环境信息
-- 环境ID: c-66-7gfze7g4075f38c7
-- 区域: ap-shanghai
-- 数据库表: ✅ users, courses, import_tasks, reminders, admins
+## 说明
 
-详见 [部署文档](./docs/deployment.md)
+仓库里存在一些历史文档和早期结构说明，它们不一定与当前线上 CloudBase 真实状态完全一致。涉及数据库、云函数、权限和提醒逻辑时，请以 [开发接手文档](./docs/developer-handoff.md) 为准，再结合真实 CloudBase 环境核对。

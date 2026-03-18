@@ -2,13 +2,15 @@
   <div class="editorial-page">
     <section class="hero-panel">
       <div>
-        <div class="hero-kicker">Subscription Watch</div>
-        <h2>查看用户的提醒授权、剩余次数和提醒时机。</h2>
-        <p>这部分直接对应小程序设置页里的订阅消息授权功能，用于确认哪些用户还处于 active 状态，哪些授权已经用尽或失活。</p>
+        <div class="section-kicker">Reminder Subscription</div>
+        <h2>统一查看提醒授权、剩余次数和提醒参数。</h2>
+        <p>
+          这里对应小程序设置页里的订阅提醒能力，可以帮助你确认哪些用户仍处于可发送状态，以及提醒参数是否正常落库。
+        </p>
       </div>
       <div class="hero-side">
-        <strong>{{ rows.length }} 条授权记录</strong>
-        <div class="muted-text">当前活跃授权一眼可见</div>
+        <strong>{{ rows.length }}</strong>
+        <div class="muted-text">条授权记录</div>
       </div>
     </section>
 
@@ -33,8 +35,8 @@
     <section class="panel-card">
       <div class="panel-header">
         <div>
-          <div class="panel-title">订阅授权列表</div>
-          <div class="panel-subtitle">包含模板 ID、跳转页、提醒分钟数和剩余发送次数。</div>
+          <div class="panel-title">订阅提醒列表</div>
+          <div class="panel-subtitle">包含模板 ID、跳转页、提醒分钟数、周末开关和剩余发送次数。</div>
         </div>
       </div>
 
@@ -53,6 +55,9 @@
           <el-table-column label="提醒提前量" width="110">
             <template #default="{ row }">{{ row.remind_minutes }} 分钟</template>
           </el-table-column>
+          <el-table-column label="周末提醒" width="100">
+            <template #default="{ row }">{{ row.remind_weekends ? '开启' : '关闭' }}</template>
+          </el-table-column>
           <el-table-column label="剩余次数" width="100">
             <template #default="{ row }">{{ row.remaining_count }}</template>
           </el-table-column>
@@ -61,7 +66,7 @@
               <el-tag :type="tagType(row.status)">{{ row.status }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="最近授权" min-width="160">
+          <el-table-column label="最近授权" min-width="170">
             <template #default="{ row }">{{ formatDateTime(row.last_subscribed_at) }}</template>
           </el-table-column>
         </el-table>

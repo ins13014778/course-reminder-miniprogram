@@ -14,7 +14,7 @@ const DB_CONFIG = {
   queueLimit: 0,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
-  connectTimeout: 2000
+  connectTimeout: 2000,
 };
 
 let pool;
@@ -24,6 +24,34 @@ function getPool() {
     pool = mysql.createPool(DB_CONFIG);
   }
   return pool;
+}
+
+function isBanActive(status, bannedUntil) {
+  if (status !== 'banned') {
+    return false;
+  }
+
+  if (!bannedUntil) {
+    return true;
+  }
+
+  const time = new Date(bannedUntil).getTime();
+  if (Number.isNaN(time)) {
+    return true;
+  }
+
+  return time > Date.now();
+}
+
+function formatBanMessage(bannedUntil, reason) {
+  const reasonText = reason ? `，原因：${reason}` : '';
+  if (!bannedUntil) {
+    return `账号已被永久封禁${reasonText}`;
+  }
+
+  const until = new Date(bannedUntil);
+  const untilText = Number.isNaN(until.getTime()) ? String(bannedUntil) : until.toLocaleString('zh-CN');
+  return `账号已被封禁至 ${untilText}${reasonText}`;
 }
 
 exports.main = async (event) => {
@@ -38,17 +66,42 @@ exports.main = async (event) => {
   try {
     const db = getPool();
     const [existingRows] = await db.execute(
-      'SELECT * FROM users WHERE openid = ? LIMIT 1',
-      [openid]
+      `SELECT
+          id,
+          openid,
+          nickname,
+          signature,
+          avatar_url,
+          school,
+          major,
+          grade,
+          account_status,
+          account_ban_reason,
+          account_banned_until
+       FROM users
+       WHERE openid = ?
+       LIMIT 1`,
+      [openid],
     );
 
     if (existingRows.length > 0) {
-      return { success: true, user: existingRows[0] };
+      const existingUser = existingRows[0];
+      if (isBanActive(existingUser.account_status, existingUser.account_banned_until)) {
+        return {
+          success: false,
+          message: formatBanMessage(existingUser.account_banned_until, existingUser.account_ban_reason),
+        };
+      }
+
+      return { success: true, user: existingUser };
     }
 
     await db.execute(
-      `INSERT INTO users (openid, nickname, signature, avatar_url, school, major, grade, _openid)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO users (
+         openid, nickname, signature, avatar_url, school, major, grade, _openid,
+         account_status, note_status, share_status
+       )
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 'active', 'active')`,
       [
         openid,
         userInfo.nickname || '微信用户',
@@ -57,18 +110,32 @@ exports.main = async (event) => {
         userInfo.school || '',
         userInfo.major || '',
         userInfo.grade || '',
-        openid
-      ]
+        openid,
+      ],
     );
 
     const [createdRows] = await db.execute(
-      'SELECT * FROM users WHERE openid = ? LIMIT 1',
-      [openid]
+      `SELECT
+          id,
+          openid,
+          nickname,
+          signature,
+          avatar_url,
+          school,
+          major,
+          grade,
+          account_status,
+          account_ban_reason,
+          account_banned_until
+       FROM users
+       WHERE openid = ?
+       LIMIT 1`,
+      [openid],
     );
 
     return {
       success: true,
-      user: createdRows[0] || null
+      user: createdRows[0] || null,
     };
   } catch (error) {
     console.error('[user-getOrCreate] error:', error);

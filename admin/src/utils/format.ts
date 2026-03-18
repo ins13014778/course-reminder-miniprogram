@@ -24,9 +24,19 @@ export function weekdayLabel(value?: number | string | null) {
 }
 
 export function sectionLabel(start?: number | string | null, end?: number | string | null) {
-  return `第${start || '-'}-${end || '-'}节`
+  return `第 ${start || '-'}-${end || '-'} 节`
 }
 
 export function boolLabel(value: unknown, truthy = '是', falsy = '否') {
   return value ? truthy : falsy
+}
+
+export function permissionLabel(status?: string | null) {
+  return status === 'banned' ? '已封禁' : '正常'
+}
+
+export function trimText(value: string | null | undefined, maxLength = 80) {
+  const text = String(value || '').trim()
+  if (!text) return '-'
+  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text
 }

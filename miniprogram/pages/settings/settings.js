@@ -16,7 +16,7 @@ function createShareKey() {
 
 Page({
   data: {
-    remindEnabled: true,
+    remindEnabled: false,
     remindOptions: [5, 10, 15, 20, 30, 45, 60],
     remindMinutesIndex: 2,
     remindMinutes: 15,
@@ -35,20 +35,52 @@ Page({
     this.loadSettings();
   },
 
-  loadSettings() {
+  async loadSettings() {
     const savedEnabled = wx.getStorageSync('remindEnabled');
     const savedMinutes = wx.getStorageSync('remindMinutes');
     const savedWeekends = wx.getStorageSync('remindWeekends');
     const remindMinutes = typeof savedMinutes === 'number' ? savedMinutes : 15;
     const remindMinutesIndex = Math.max(this.data.remindOptions.indexOf(remindMinutes), 0);
+    const hasSavedEnabled = savedEnabled !== '' && typeof savedEnabled !== 'undefined';
+    const hasSavedWeekends = savedWeekends !== '' && typeof savedWeekends !== 'undefined';
 
     this.setData({
-      remindEnabled: savedEnabled !== '' ? !!savedEnabled : true,
+      remindEnabled: hasSavedEnabled ? !!savedEnabled : false,
       remindMinutes,
       remindMinutesIndex,
-      remindWeekends: savedWeekends === '' ? false : !!savedWeekends,
+      remindWeekends: hasSavedWeekends ? !!savedWeekends : false,
       defaultTemplateEnabled: isDefaultScheduleEnabled(),
     });
+
+    if (hasLoginSession()) {
+      try {
+        const userId = await resolveCurrentUserId();
+        const rows = await callDbQuery(
+          'SELECT remind_minutes, remind_weekends, status FROM user_subscriptions WHERE user_id = ? AND template_id = ? LIMIT 1',
+          [userId, COURSE_REMINDER_TEMPLATE_ID],
+        );
+        const record = rows[0];
+
+        if (record) {
+          const dbMinutes = Number(record.remind_minutes || remindMinutes);
+          const dbIndex = Math.max(this.data.remindOptions.indexOf(dbMinutes), 0);
+          const enabled = record.status === 'active';
+          const weekendsEnabled = !!Number(record.remind_weekends || 0);
+
+          this.setData({
+            remindEnabled: enabled,
+            remindMinutes: dbMinutes,
+            remindMinutesIndex: dbIndex,
+            remindWeekends: weekendsEnabled,
+          });
+          wx.setStorageSync('remindEnabled', enabled);
+          wx.setStorageSync('remindMinutes', dbMinutes);
+          wx.setStorageSync('remindWeekends', weekendsEnabled);
+        }
+      } catch (error) {
+        console.warn('[settings] load subscription failed', error);
+      }
+    }
 
     this.loadShareKey();
   },
@@ -146,7 +178,7 @@ Page({
       }
 
       if (!saved) {
-        throw new Error('密钥生成过于频繁，请稍后再试');
+        throw new Error('分享密钥生成过于频繁，请稍后再试');
       }
 
       this.setData({
@@ -200,16 +232,17 @@ Page({
     const userId = await resolveCurrentUserId();
     await callDbQuery(
       `INSERT INTO user_subscriptions
-        (user_id, template_id, page_path, remind_minutes, remaining_count, status, last_subscribed_at)
-       VALUES (?, ?, 'pages/index/index', ?, 1, 'active', NOW())
+        (user_id, template_id, page_path, remind_minutes, remind_weekends, remaining_count, status, last_subscribed_at)
+       VALUES (?, ?, 'pages/index/index', ?, ?, 1, 'active', NOW())
        ON DUPLICATE KEY UPDATE
          remind_minutes = VALUES(remind_minutes),
+         remind_weekends = VALUES(remind_weekends),
          page_path = VALUES(page_path),
          remaining_count = remaining_count + 1,
          status = 'active',
          last_subscribed_at = NOW(),
          updated_at = CURRENT_TIMESTAMP`,
-      [userId, COURSE_REMINDER_TEMPLATE_ID, remindMinutes],
+      [userId, COURSE_REMINDER_TEMPLATE_ID, remindMinutes, this.data.remindWeekends ? 1 : 0],
     );
   },
 
@@ -223,15 +256,33 @@ Page({
   },
 
   async onSave() {
-    wx.setStorageSync('remindEnabled', this.data.remindEnabled);
-    wx.setStorageSync('remindMinutes', this.data.remindMinutes);
-    wx.setStorageSync('remindWeekends', this.data.remindWeekends);
     setDefaultScheduleEnabled(this.data.defaultTemplateEnabled);
+
+    if (this.data.remindEnabled && !hasLoginSession()) {
+      this.setData({ remindEnabled: false });
+      wx.setStorageSync('remindEnabled', false);
+      wx.setStorageSync('remindMinutes', this.data.remindMinutes);
+      wx.setStorageSync('remindWeekends', this.data.remindWeekends);
+      wx.showModal({
+        title: '需要登录',
+        content: '开启课程提醒前需要先登录账号并完成订阅授权。',
+        confirmText: '去登录',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({ url: '/pages/login/login' });
+          }
+        },
+      });
+      return;
+    }
 
     if (this.data.remindEnabled && hasLoginSession()) {
       try {
         await this.requestCourseReminderSubscribe();
         await this.saveSubscriptionAuth(this.data.remindMinutes);
+        wx.setStorageSync('remindEnabled', true);
+        wx.setStorageSync('remindMinutes', this.data.remindMinutes);
+        wx.setStorageSync('remindWeekends', this.data.remindWeekends);
         wx.showToast({ title: '提醒已开启', icon: 'success' });
         return;
       } catch (error) {
@@ -251,6 +302,9 @@ Page({
       }
     }
 
+    wx.setStorageSync('remindEnabled', this.data.remindEnabled);
+    wx.setStorageSync('remindMinutes', this.data.remindMinutes);
+    wx.setStorageSync('remindWeekends', this.data.remindWeekends);
     wx.showToast({ title: '设置已保存', icon: 'success' });
   },
 });

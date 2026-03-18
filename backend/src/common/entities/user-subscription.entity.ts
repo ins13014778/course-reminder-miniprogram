@@ -17,6 +17,9 @@ export class UserSubscription {
   @Column({ name: 'remind_minutes', type: 'int', default: 15 })
   remindMinutes: number;
 
+  @Column({ name: 'remind_weekends', type: 'tinyint', width: 1, default: () => '0' })
+  remindWeekends: boolean;
+
   @Column({ name: 'remaining_count', type: 'int', default: 0 })
   remainingCount: number;
 

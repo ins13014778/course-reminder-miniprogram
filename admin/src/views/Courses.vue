@@ -2,37 +2,45 @@
   <div class="editorial-page">
     <section class="hero-panel">
       <div>
-        <div class="hero-kicker">Course Operations</div>
-        <h2>管理用户课表、筛查异常课程，并核对节次与上课地点。</h2>
-        <p>课程数据来自小程序中的手动编辑、OCR 导入、分享导入三种链路，这里统一从线上课程表做运营和排障视图。</p>
+        <div class="section-kicker">Course Operations</div>
+        <h2>全局巡检所有用户课表，快速定位异常课程并直接删除。</h2>
+        <p>
+          这里主要用于排查 OCR 导入错误、重复课程、异常地点和时间段，也能辅助核对某个用户的课表是否已经正确落库。
+        </p>
       </div>
       <div class="hero-side">
-        <strong>{{ courses.length }} 门课程</strong>
-        <div class="muted-text">支持关键词与星期过滤</div>
+        <strong>{{ courses.length }}</strong>
+        <div class="muted-text">门课程记录</div>
       </div>
     </section>
 
     <section class="panel-card">
       <div class="panel-header">
         <div>
-          <div class="panel-title">课程库</div>
-          <div class="panel-subtitle">字段按 CloudBase 真实表结构渲染：course_name / teacher / location。</div>
+          <div class="panel-title">课表巡检列表</div>
+          <div class="panel-subtitle">按课程名、教师、教室、用户昵称和星期过滤。</div>
         </div>
         <div class="panel-toolbar">
-          <el-input v-model="keyword" placeholder="搜索课程 / 教师 / 教室 / 用户昵称" clearable style="width: 280px" @keyup.enter="loadData" />
+          <el-input
+            v-model="keyword"
+            placeholder="搜索课程 / 教师 / 教室 / 用户昵称"
+            clearable
+            style="width: 280px"
+            @keyup.enter="loadData"
+          />
           <el-select v-model="weekday" clearable placeholder="星期" style="width: 120px">
             <el-option v-for="item in weekdayOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
-          <el-button type="primary" @click="loadData">筛选</el-button>
+          <el-button type="primary" @click="loadData">查询</el-button>
         </div>
       </div>
 
       <div class="editorial-table">
         <el-table :data="courses" v-loading="loading">
           <el-table-column prop="id" label="ID" width="78" />
-          <el-table-column prop="course_name" label="课程名" min-width="160" />
+          <el-table-column prop="course_name" label="课程" min-width="180" />
           <el-table-column prop="teacher" label="教师" min-width="120" />
-          <el-table-column prop="location" label="教室" min-width="140" />
+          <el-table-column prop="location" label="教室" min-width="160" />
           <el-table-column label="用户" min-width="120">
             <template #default="{ row }">{{ row.nickname || '未命名用户' }}</template>
           </el-table-column>
@@ -42,10 +50,10 @@
           <el-table-column label="节次" min-width="120">
             <template #default="{ row }">{{ sectionLabel(row.start_section, row.end_section) }}</template>
           </el-table-column>
-          <el-table-column label="周次" min-width="120">
+          <el-table-column label="周次" min-width="130">
             <template #default="{ row }">第 {{ row.start_week }} - {{ row.end_week }} 周</template>
           </el-table-column>
-          <el-table-column label="时间" min-width="130">
+          <el-table-column label="时间" min-width="140">
             <template #default="{ row }">{{ row.start_time || '-' }} ~ {{ row.end_time || '-' }}</template>
           </el-table-column>
           <el-table-column label="操作" width="110" fixed="right">

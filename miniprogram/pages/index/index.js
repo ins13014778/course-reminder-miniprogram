@@ -135,10 +135,10 @@ Page({
   async loadAnnouncement() {
     try {
       const rows = await callDbQuery(
-        `SELECT id, title, content, updated_at
+        `SELECT id, title, content, is_pinned, published_at, updated_at
          FROM announcements
          WHERE status = 'published'
-         ORDER BY is_pinned DESC, updated_at DESC
+         ORDER BY is_pinned DESC, COALESCE(published_at, updated_at) DESC, id DESC
          LIMIT 1`
       );
 
@@ -153,7 +153,7 @@ Page({
           id: announcement.id,
           title: announcement.title || '最新公告',
           content: announcement.content || '',
-          updatedAtText: this.formatAnnouncementTime(announcement.updated_at)
+          updatedAtText: this.formatAnnouncementTime(announcement.published_at || announcement.updated_at)
         }
       });
     } catch (error) {
