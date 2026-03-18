@@ -4,6 +4,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
+import { AdminModule } from './admin/admin.module';
 import { CoursesModule } from './courses/courses.module';
 import { ImportModule } from './import/import.module';
 import { RemindersModule } from './reminders/reminders.module';
@@ -21,10 +22,11 @@ import { RemindersModule } from './reminders/reminders.module';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DATABASE,
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: true,
+      synchronize: false,
     }),
     ScheduleModule.forRoot(),
     AuthModule,
+    AdminModule,
     AnnouncementsModule,
     CoursesModule,
     ImportModule,

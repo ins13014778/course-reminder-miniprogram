@@ -5,9 +5,11 @@ import { MessageSenderService } from './message-sender.service';
 import { ReminderScheduler } from './reminder.scheduler';
 import { Reminder } from '../common/entities/reminder.entity';
 import { Course } from '../common/entities/course.entity';
+import { User } from '../common/entities/user.entity';
+import { UserSubscription } from '../common/entities/user-subscription.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Reminder, Course])],
+  imports: [TypeOrmModule.forFeature([Reminder, Course, User, UserSubscription])],
   providers: [RemindersService, MessageSenderService, ReminderScheduler],
   exports: [RemindersService],
 })

@@ -14,16 +14,21 @@ export class ReminderScheduler {
 
   @Cron(CronExpression.EVERY_MINUTE)
   async handleReminders() {
-    const reminders = await this.remindersService.getPendingReminders();
+    const jobs = await this.remindersService.getDueReminderJobs();
 
-    for (const reminder of reminders) {
+    for (const job of jobs) {
       try {
-        await this.messageSender.sendReminder(reminder.userId, {
-          courseName: '课程名称',
+        await this.messageSender.sendReminder(job.user.openid, {
+          courseName: job.course.courseName || (job.course as any).course_name || '课程提醒',
+          startTime: this.remindersService.getCourseStartTime(job.course),
+          location: (job.course as any).classroom || (job.course as any).location || '待定教室',
+          remark: `还有 ${job.subscription.remindMinutes} 分钟上课，请提前到教室`,
         });
-        await this.remindersService.markAsSent(reminder.id);
+        await this.remindersService.markAsSent(job.reminder.id);
+        await this.remindersService.consumeSubscription(job.subscription.id);
       } catch (error) {
-        await this.remindersService.markAsFailed(reminder.id, error.message);
+        this.logger.error(`发送订阅消息失败: ${error.message}`);
+        await this.remindersService.markAsFailed(job.reminder.id, error.message);
       }
     }
   }

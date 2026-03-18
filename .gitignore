@@ -7,3 +7,4 @@ dist/
 .idea/
 .omc/
 .claude/settings.local.json
+codex-mcp-backup/

@@ -1,11 +1,18 @@
 {
   "mcpServers": {
     "cloudbase": {
+      "description": "CloudBase MCP",
       "command": "npx",
       "args": [
         "@cloudbase/cloudbase-mcp@latest"
-      ],
-      "description": "CloudBase MCP"
+      ]
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": [
+        "chrome-devtools-mcp@latest",
+        "--browserUrl=http://127.0.0.1:9222"
+      ]
     }
   },
   "imports": []

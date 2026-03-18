@@ -1,20 +1,32 @@
 import request from '../utils/request'
 
+export const overviewApi = {
+  get: () => request.get('/admin/overview'),
+}
+
 export const userApi = {
-  getList: () => request.get('/admin/users'),
+  getList: (params?: any) => request.get('/admin/users', { params }),
 }
 
 export const courseApi = {
-  getList: () => request.get('/admin/courses'),
+  getList: (params?: any) => request.get('/admin/courses', { params }),
   delete: (id: number) => request.delete(`/admin/courses/${id}`),
 }
 
-export const importApi = {
-  getList: () => request.get('/admin/import-tasks'),
+export const templateApi = {
+  getList: (params?: any) => request.get('/admin/template-courses', { params }),
 }
 
-export const reminderApi = {
-  getList: () => request.get('/admin/reminders'),
+export const shareApi = {
+  getList: () => request.get('/admin/share-keys'),
+}
+
+export const subscriptionApi = {
+  getList: () => request.get('/admin/subscriptions'),
+}
+
+export const noteApi = {
+  getList: (params?: any) => request.get('/admin/notes', { params }),
 }
 
 export const announcementApi = {
