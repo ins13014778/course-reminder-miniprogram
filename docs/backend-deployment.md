@@ -2,12 +2,10 @@
 
 最后更新：`2026-03-19`
 
-本文档覆盖：
+本文档专门说明两件事：
 
-- 后端 API 宝塔部署
-- 管理后台宝塔部署
-- CloudBase MySQL 外部连接配置
-- PM2 常驻与 Nginx 反向代理
+- 宝塔上后端 API 到底部署哪一部分代码
+- 数据库到底该导入哪个 `.sql` 文件
 
 ## 1. 推荐部署拓扑
 
@@ -16,11 +14,11 @@
 1. `api.xxx.com` 指向 `backend/`
 2. `admin.xxx.com` 指向 `admin/`
 
-数据库继续使用 CloudBase MySQL，不在宝塔本机落业务数据。
+业务数据库继续使用 CloudBase MySQL，不建议把当前生产业务数据迁到宝塔本机 MySQL。
 
 ## 2. 服务器准备
 
-宝塔服务器建议：
+建议环境：
 
 - Ubuntu 22.04 或 CentOS 7+
 - Node.js 20
@@ -42,9 +40,34 @@ git clone https://github.com/ins13014778/course-reminder-miniprogram.git
 cd course-reminder-miniprogram
 ```
 
-## 4. 部署后端 API
+## 4. 后端 API 部署
 
-### 4.1 安装与构建
+### 4.1 API 部署代码在哪里
+
+宝塔部署的 API 代码就在：
+
+- [backend/](/E:/codebese1/backend)
+
+其中和部署最相关的文件是：
+
+- [backend/package.json](/E:/codebese1/backend/package.json)
+  作用：定义 `npm run build`、`npm run start:prod`
+- [backend/ecosystem.config.cjs](/E:/codebese1/backend/ecosystem.config.cjs)
+  作用：PM2 配置文件，当前启动入口配置为 `dist/main.js`
+- [backend/src/main.ts](/E:/codebese1/backend/src/main.ts)
+  作用：NestJS 源码入口
+- [backend/dist/main.js](/E:/codebese1/backend/dist/main.js)
+  作用：执行构建后生成的生产启动文件
+
+实际部署链路是：
+
+1. 拉取整个 [backend/](/E:/codebese1/backend)
+2. 执行 `npm install`
+3. 执行 `npm run build`
+4. 产出 `backend/dist/main.js`
+5. 由 PM2 通过 [backend/ecosystem.config.cjs](/E:/codebese1/backend/ecosystem.config.cjs) 启动
+
+### 4.2 安装与构建
 
 ```bash
 cd /www/wwwroot/course-reminder-miniprogram/backend
@@ -52,9 +75,9 @@ npm install
 npm run build
 ```
 
-### 4.2 配置环境变量
+### 4.3 配置环境变量
 
-复制：
+复制环境变量模板：
 
 ```bash
 cp .env.example .env
@@ -86,11 +109,11 @@ ADMIN_PASSWORD_HASH=建议使用 bcrypt 哈希
 
 说明：
 
-- 线上现在支持 `admin_accounts` 数据表管理员体系
-- `ADMIN_EMAIL / ADMIN_PASSWORD_HASH` 保留作兜底根账号配置
+- 当前线上管理员体系已经使用 `admin_accounts`
+- `ADMIN_EMAIL / ADMIN_PASSWORD_HASH` 主要作为兜底初始化配置
 - 生产环境不要继续使用明文 `ADMIN_PASSWORD`
 
-### 4.3 使用 PM2 启动
+### 4.4 使用 PM2 启动
 
 ```bash
 cd /www/wwwroot/course-reminder-miniprogram/backend
@@ -108,9 +131,25 @@ pm2 restart course-reminder-backend
 pm2 stop course-reminder-backend
 ```
 
-### 4.4 宝塔 Nginx 反代配置
+如果你想确认宝塔上 API 到底跑的是哪个文件，可以看：
 
-在宝塔中新建站点，例如 `api.xxx.com`，反代到 `127.0.0.1:3000`。
+```bash
+cat /www/wwwroot/course-reminder-miniprogram/backend/ecosystem.config.cjs
+```
+
+当前关键配置是：
+
+```js
+script: 'dist/main.js'
+```
+
+所以线上 API 的启动入口是：
+
+- [backend/dist/main.js](/E:/codebese1/backend/dist/main.js)
+
+### 4.5 宝塔 Nginx 反代配置
+
+在宝塔中新增站点，例如 `api.xxx.com`，反代到 `127.0.0.1:3000`。
 
 示例：
 
@@ -125,7 +164,7 @@ location / {
 }
 ```
 
-## 5. 部署管理后台
+## 5. 管理后台部署
 
 ### 5.1 构建后台
 
@@ -134,7 +173,7 @@ cd /www/wwwroot/course-reminder-miniprogram/admin
 npm install
 ```
 
-如果你要指定线上 API 地址，先创建 `.env.production`：
+如需指定线上 API 地址，先创建 `.env.production`：
 
 ```env
 VITE_API_BASE_URL=https://api.xxx.com
@@ -148,15 +187,15 @@ npm run build
 
 ### 5.2 发布到宝塔站点
 
-在宝塔中新建站点，例如 `admin.xxx.com`。
+在宝塔中新增站点，例如 `admin.xxx.com`。
 
 把构建产物：
 
-- `admin/dist/`
+- [admin/dist/](/E:/codebese1/admin/dist)
 
 复制到站点根目录。
 
-如果是手动复制：
+手动复制示例：
 
 ```bash
 rm -rf /www/wwwroot/admin.xxx.com/*
@@ -165,7 +204,7 @@ cp -r /www/wwwroot/course-reminder-miniprogram/admin/dist/* /www/wwwroot/admin.x
 
 ### 5.3 Nginx 单页应用配置
 
-后台是 Vue Router history 模式，需要加回退：
+后台使用 Vue Router history 模式，需要回退配置：
 
 ```nginx
 location / {
@@ -173,29 +212,66 @@ location / {
 }
 ```
 
-## 6. CloudBase 数据库连接说明
+## 6. 数据库到底导入哪些文件
 
-本项目当前数据库不建议迁到本机 MySQL。
+### 6.1 如果你接的是当前 CloudBase 线上库
 
-推荐做法：
+这种情况：
 
-- 宝塔服务器只运行 `backend/` 和静态后台
-- 业务数据继续用 CloudBase MySQL
-- 数据结构变更统一走仓库迁移文件与 CloudBase 校验
+- 不需要导入任何本地 `.sql` 文件
+- 只需要把 [backend/.env.example](/E:/codebese1/backend/.env.example) 对应变量填到生产 `.env`
+- 后端直接连接 CloudBase MySQL
 
-数据库开源结构见：
+也就是说，宝塔服务器只负责跑 API 和后台页面，不负责“恢复当前线上数据库数据”。
+
+### 6.2 如果你是新建一套空数据库
+
+只推荐先导入：
 
 - [database/open-source-schema.sql](/E:/codebese1/database/open-source-schema.sql)
+
+这个文件是当前仓库里唯一推荐的完整建表文件，来源于 `2026-03-19` 的 CloudBase 线上真实结构快照，不包含生产数据。
+
+### 6.3 `database/` 目录每个 SQL 文件的用途
+
+- [database/open-source-schema.sql](/E:/codebese1/database/open-source-schema.sql)
+  用途：完整空库建表，推荐导入
+- [database/schema.sql](/E:/codebese1/database/schema.sql)
+  用途：历史草稿，不推荐直接导入
+- [database/course_templates.sql](/E:/codebese1/database/course_templates.sql)
+  用途：早期模板课表脚本，含模板数据，不推荐直接导入生产
+- [database/notes.sql](/E:/codebese1/database/notes.sql)
+  用途：早期 `notes` 单表脚本，不能当完整初始化文件
+
+结论：
+
+- 要新建完整空库，导 `open-source-schema.sql`
+- 不要把 `schema.sql` 当成当前真实表结构
+- 不要把 `course_templates.sql`、`notes.sql` 当成整库初始化脚本
+
+### 6.4 推荐导库顺序
+
+如果你要自建数据库，建议顺序如下：
+
+1. 新建空数据库
+2. 导入 [database/open-source-schema.sql](/E:/codebese1/database/open-source-schema.sql)
+3. 手动创建你的管理员账号
+4. 配置后端 `.env`
+5. 启动 API
+6. 验证 `/admin/login`、`/admin/profile`
+
+如果你后面确实要补充模板课表数据，不要直接执行旧的 [database/course_templates.sql](/E:/codebese1/database/course_templates.sql)，先核对字段是否与当前真实表结构一致，再决定是否整理后导入。
 
 ## 7. 上线后验证
 
 至少检查以下几项：
 
-1. `https://api.xxx.com/admin/overview` 是否可返回 401 或正常数据
-2. 管理员登录后能否看到完整菜单
-3. 公告能否发布并在小程序显示
-4. 反馈处理后，小程序通知中心是否可见
-5. 课程提醒日志能否在后台打开
+1. `https://api.xxx.com/admin/overview` 能返回 `401` 或正常数据
+2. 管理员登录后能看到正确菜单
+3. 公告可以发布并在小程序显示
+4. 内容页修改后前台能读取到最新内容
+5. 反馈处理后小程序通知中心能看到结果
+6. 提醒日志页面可以打开
 
 ## 8. 更新部署
 
@@ -227,4 +303,4 @@ cp -r dist/* /www/wwwroot/admin.xxx.com/
 - `miniprogram/cloudfunctions/db-query/`
 - `miniprogram/cloudfunctions/user-getOrCreate/`
 
-这类改动仍需要单独重新部署到 CloudBase。
+这类改动仍然需要单独重新部署到 CloudBase。
