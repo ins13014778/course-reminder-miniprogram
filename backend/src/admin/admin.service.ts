@@ -7,7 +7,7 @@ import { ADMIN_PERMISSION_OPTIONS, AdminPermission } from './admin-permissions.d
 
 type QueryValue = string | number | boolean | null;
 type PermissionMode = 'active' | 'banned';
-type PermissionKey = 'account' | 'note' | 'share';
+type PermissionKey = 'account' | 'note' | 'share' | 'avatar' | 'signature';
 type AdminRole = 'super_admin' | 'operator' | 'moderator' | 'support';
 
 type PermissionPayload = {
@@ -20,9 +20,12 @@ type UserPermissionPayload = {
   account?: PermissionPayload;
   note?: PermissionPayload;
   share?: PermissionPayload;
+  avatar?: PermissionPayload;
+  signature?: PermissionPayload;
 };
 
 const ALL_ADMIN_PERMISSIONS = ADMIN_PERMISSION_OPTIONS.map((item) => item.key);
+const USER_PERMISSION_KEYS: PermissionKey[] = ['account', 'note', 'share', 'avatar', 'signature'];
 
 @Injectable()
 export class AdminService {
@@ -91,6 +94,8 @@ export class AdminService {
       'share.view',
       'subscription.view',
       'reminder_log.view',
+      'appeal.view',
+      'appeal.review',
       'feedback.view',
       'feedback.review',
     ],
@@ -219,13 +224,17 @@ export class AdminService {
   }
 
   private attachPermissionSummary(row: any) {
+    const permissions = USER_PERMISSION_KEYS.reduce(
+      (map, key) => {
+        map[key] = this.normalizePermission(key, row);
+        return map;
+      },
+      {} as Record<PermissionKey, ReturnType<AdminService['normalizePermission']>>,
+    );
+
     return {
       ...row,
-      permissions: {
-        account: this.normalizePermission('account', row),
-        note: this.normalizePermission('note', row),
-        share: this.normalizePermission('share', row),
-      },
+      permissions,
     };
   }
 
@@ -395,6 +404,7 @@ export class AdminService {
 
   async getOverview() {
     const feedbackTableExists = await this.tableExists('user_feedback');
+    const appealTableExists = await this.tableExists('user_appeals');
     const [
       users,
       courses,
@@ -410,6 +420,7 @@ export class AdminService {
       blockedKeys,
       sharedNotes,
       pendingReports,
+      pendingAppeals,
       pendingFeedback,
     ] =
       await Promise.all([
@@ -433,6 +444,9 @@ export class AdminService {
         this.dataSource.query("SELECT COUNT(*) AS total FROM schedule_share_keys WHERE status = 'blocked'"),
         this.dataSource.query("SELECT COUNT(*) AS total FROM note_shares WHERE status = 'active'"),
         this.dataSource.query("SELECT COUNT(*) AS total FROM content_reports WHERE status = 'pending'"),
+        appealTableExists
+          ? this.dataSource.query("SELECT COUNT(*) AS total FROM user_appeals WHERE status = 'pending'")
+          : Promise.resolve([{ total: 0 }]),
         feedbackTableExists
           ? this.dataSource.query("SELECT COUNT(*) AS total FROM user_feedback WHERE status = 'pending'")
           : Promise.resolve([{ total: 0 }]),
@@ -477,6 +491,7 @@ export class AdminService {
         blockedKeys: Number(blockedKeys[0]?.total || 0),
         sharedNotes: Number(sharedNotes[0]?.total || 0),
         pendingReports: Number(pendingReports[0]?.total || 0),
+        pendingAppeals: Number(pendingAppeals[0]?.total || 0),
         pendingFeedback: Number(pendingFeedback[0]?.total || 0),
       },
       recentUsers,
@@ -487,6 +502,7 @@ export class AdminService {
         importTasksTable: await this.tableExists('import_tasks'),
         notesTable: await this.tableExists('notes'),
         announcementTable: await this.tableExists('announcements'),
+        appealTable: appealTableExists,
         feedbackTable: feedbackTableExists,
       },
     };
@@ -573,6 +589,12 @@ export class AdminService {
           u.share_status,
           u.share_ban_reason,
           u.share_banned_until,
+          u.avatar_status,
+          u.avatar_ban_reason,
+          u.avatar_banned_until,
+          u.signature_status,
+          u.signature_ban_reason,
+          u.signature_banned_until,
           u.created_at,
           u.updated_at,
           COUNT(DISTINCT c.id) AS course_count,
@@ -586,11 +608,13 @@ export class AdminService {
        LEFT JOIN user_subscriptions us ON us.user_id = u.id
        ${where}
        GROUP BY
-          u.id, u.openid, u.nickname, u.signature, u.avatar_url, u.school, u.major, u.grade,
-          u.account_status, u.account_ban_reason, u.account_banned_until,
-          u.note_status, u.note_ban_reason, u.note_banned_until,
-          u.share_status, u.share_ban_reason, u.share_banned_until,
-          u.created_at, u.updated_at
+           u.id, u.openid, u.nickname, u.signature, u.avatar_url, u.school, u.major, u.grade,
+           u.account_status, u.account_ban_reason, u.account_banned_until,
+           u.note_status, u.note_ban_reason, u.note_banned_until,
+           u.share_status, u.share_ban_reason, u.share_banned_until,
+           u.avatar_status, u.avatar_ban_reason, u.avatar_banned_until,
+           u.signature_status, u.signature_ban_reason, u.signature_banned_until,
+           u.created_at, u.updated_at
        ORDER BY u.created_at DESC`,
       params,
     );
@@ -678,6 +702,8 @@ export class AdminService {
     this.buildPermissionUpdate('account', payload?.account, sets, params);
     this.buildPermissionUpdate('note', payload?.note, sets, params);
     this.buildPermissionUpdate('share', payload?.share, sets, params);
+    this.buildPermissionUpdate('avatar', payload?.avatar, sets, params);
+    this.buildPermissionUpdate('signature', payload?.signature, sets, params);
 
     if (!sets.length) {
       throw new BadRequestException('No permission changes provided');
@@ -1269,6 +1295,189 @@ export class AdminService {
     });
 
     return target;
+  }
+
+  async getAppeals(keyword?: string, status?: string, appealType?: string) {
+    const exists = await this.tableExists('user_appeals').catch(() => false);
+    if (!exists) {
+      return [];
+    }
+
+    const params: QueryValue[] = [];
+    const clauses: string[] = [];
+
+    if (keyword) {
+      const fuzzy = `%${keyword}%`;
+      clauses.push(
+        `(
+          a.title LIKE ?
+          OR a.content LIKE ?
+          OR a.contact LIKE ?
+          OR a.restriction_reason LIKE ?
+          OR u.nickname LIKE ?
+          OR u.school LIKE ?
+        )`,
+      );
+      params.push(fuzzy, fuzzy, fuzzy, fuzzy, fuzzy, fuzzy);
+    }
+
+    if (status) {
+      clauses.push('a.status = ?');
+      params.push(status);
+    }
+
+    if (appealType) {
+      clauses.push('a.appeal_type = ?');
+      params.push(appealType);
+    }
+
+    const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+
+    return this.dataSource.query(
+      `SELECT
+          a.id,
+          a.user_id,
+          a.appeal_type,
+          a.title,
+          a.content,
+          a.contact,
+          a.restriction_reason,
+          a.restriction_expires_at,
+          a.status,
+          a.review_action,
+          a.admin_note,
+          a.reviewed_at,
+          a.created_at,
+          a.updated_at,
+          u.nickname,
+          u.school,
+          u.major,
+          u.grade
+       FROM user_appeals a
+       LEFT JOIN users u ON u.id = a.user_id
+       ${where}
+       ORDER BY
+         CASE a.status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END ASC,
+         a.created_at DESC,
+         a.id DESC`,
+      params,
+    );
+  }
+
+  async reviewAppeal(
+    id: number,
+    payload: { status?: 'approved' | 'rejected'; adminNote?: string },
+    admin?: any,
+  ) {
+    if (!['approved', 'rejected'].includes(payload?.status || '')) {
+      throw new BadRequestException('Invalid appeal status');
+    }
+
+    await this.ensureTableExists('user_appeals', 'user_appeals table is not ready yet');
+
+    await this.dataSource.transaction(async (manager) => {
+      const appeals = await manager.query(
+        `SELECT *
+           FROM user_appeals
+          WHERE id = ?
+          LIMIT 1`,
+        [id],
+      );
+
+      if (!appeals.length) {
+        throw new NotFoundException('Appeal not found');
+      }
+
+      const appeal = appeals[0];
+      if (appeal.status !== 'pending') {
+        throw new BadRequestException('Only pending appeals can be reviewed');
+      }
+
+      let reviewAction: 'none' | 'lift_restriction' = 'none';
+      if (payload.status === 'approved') {
+        const prefixMap: Record<string, PermissionKey> = {
+          account: 'account',
+          note: 'note',
+          share: 'share',
+          avatar: 'avatar',
+          signature: 'signature',
+        };
+        const prefix = prefixMap[String(appeal.appeal_type || '')];
+
+        if (!prefix) {
+          throw new BadRequestException('Invalid appeal type');
+        }
+
+        await manager.query(
+          `UPDATE users
+              SET ${prefix}_status = 'active',
+                  ${prefix}_ban_reason = NULL,
+                  ${prefix}_banned_until = NULL,
+                  updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?`,
+          [appeal.user_id],
+        );
+        reviewAction = 'lift_restriction';
+      }
+
+      await manager.query(
+        `UPDATE user_appeals
+            SET status = ?,
+                review_action = ?,
+                admin_note = ?,
+                reviewed_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?`,
+        [
+          payload.status,
+          reviewAction,
+          (payload.adminNote || '').trim() || null,
+          id,
+        ],
+      );
+    });
+
+    const rows = await this.dataSource.query(
+      `SELECT
+          a.id,
+          a.user_id,
+          a.appeal_type,
+          a.title,
+          a.content,
+          a.contact,
+          a.restriction_reason,
+          a.restriction_expires_at,
+          a.status,
+          a.review_action,
+          a.admin_note,
+          a.reviewed_at,
+          a.created_at,
+          a.updated_at,
+          u.nickname,
+          u.school,
+          u.major,
+          u.grade
+       FROM user_appeals a
+       LEFT JOIN users u ON u.id = a.user_id
+       WHERE a.id = ?
+       LIMIT 1`,
+      [id],
+    );
+
+    if (!rows.length) {
+      throw new NotFoundException('Appeal not found');
+    }
+
+    await this.adminAuditService.log({
+      ...this.buildAdminSummary(admin),
+      action: 'appeal.review',
+      targetType: 'user_appeal',
+      targetId: id,
+      summary: `review user appeal #${id} -> ${payload.status}`,
+      detail: payload,
+    });
+
+    return rows[0];
   }
 
   async getFeedback(keyword?: string, status?: string, category?: string) {

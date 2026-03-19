@@ -2,55 +2,52 @@
 
 最后更新：`2026-03-19`
 
-本文档基于当前 `backend/src` 控制器整理，覆盖已开源接口，不包含业务数据。
+本文档基于当前 `backend/src` 的真实代码整理，覆盖已开源接口，不包含任何业务数据。
 
 ## 1. 鉴权说明
 
 ### 1.1 小程序用户接口
 
-- 小程序登录走 `POST /auth/wechat-login`
+- 登录接口：`POST /auth/wechat-login`
 - 请求体：`{ code }`
 
 ### 1.2 后台接口
 
-- 后台登录：`POST /admin/login`
-- 登录成功后使用 `Authorization: Bearer <token>`
+- 登录接口：`POST /admin/login`
+- 登录成功后使用：`Authorization: Bearer <token>`
 
-后台接口同时支持：
+后台接口支持两层控制：
 
 - 角色控制
 - 细粒度权限控制
 
-## 2. 后台管理接口
+## 2. 后台接口
 
-前缀：`/admin`
+统一前缀：`/admin`
 
-### 2.1 认证
+### 2.1 认证与总览
 
 - `POST /admin/login`
 - `GET /admin/profile`
 - `GET /admin/overview`
 
-### 2.2 用户治理
+### 2.2 用户与课表
 
 - `GET /admin/users`
 - `GET /admin/users/:id/detail`
 - `PATCH /admin/users/:id/permissions`
-
-### 2.3 课表管理
-
 - `GET /admin/courses`
 - `DELETE /admin/courses/:id`
 - `GET /admin/template-courses`
 
-### 2.4 分享与提醒
+### 2.3 分享、订阅与提醒
 
 - `GET /admin/share-keys`
 - `PATCH /admin/share-keys/:id/status`
 - `GET /admin/subscriptions`
 - `GET /admin/reminder-logs`
 
-### 2.5 笔记与举报
+### 2.4 笔记、分享与举报
 
 - `GET /admin/notes`
 - `PATCH /admin/notes/:id/moderation`
@@ -58,6 +55,17 @@
 - `PATCH /admin/note-shares/:id/status`
 - `GET /admin/reports`
 - `PATCH /admin/reports/:id/review`
+
+### 2.5 用户申诉
+
+- `GET /admin/appeals`
+- `PATCH /admin/appeals/:id/review`
+
+说明：
+
+- 仅 `pending` 状态的申诉允许审核
+- `approved` 会自动解除对应的用户限制
+- `rejected` 会保留当前限制
 
 ### 2.6 留言反馈
 
@@ -72,7 +80,6 @@
 - `PUT /admin/announcements/:id`
 - `PUT /admin/announcements/current`
 - `DELETE /admin/announcements/:id`
-
 - `GET /admin/content-pages`
 - `GET /admin/content-pages/:key`
 - `PATCH /admin/content-pages/:key`
@@ -107,17 +114,12 @@
 - `POST /import/upload`
 - `GET /import/task/:id`
 
-### 3.4 公告
+### 3.4 公告与内容页
 
 - `GET /announcements/active`
-
-### 3.5 内容页
-
 - `GET /content-pages/:key`
 
-## 4. 权限设计摘要
-
-后台当前支持的细粒度权限包括：
+## 4. 当前后台权限点
 
 - `user.view`
 - `user.ban`
@@ -133,6 +135,8 @@
 - `note_share.manage`
 - `report.view`
 - `report.review`
+- `appeal.view`
+- `appeal.review`
 - `feedback.view`
 - `feedback.review`
 - `announcement.manage`
@@ -140,13 +144,11 @@
 - `audit.view`
 - `admin.manage`
 
-## 5. 文档边界
+## 5. 维护建议
 
-本文档是接口清单和权限摘要，不逐个展开 DTO 字段。
+如果后续新增后台功能，至少同步更新这几处：
 
-如果后续要对外发布 OpenAPI，建议下一步补：
-
-- 请求体示例
-- 响应体示例
-- 错误码
-- 权限矩阵
+1. 后端控制器
+2. 后台权限定义
+3. 后台路由
+4. 本文档

@@ -89,6 +89,12 @@ exports.main = async (event) => {
       if (isBanActive(existingUser.account_status, existingUser.account_banned_until)) {
         return {
           success: false,
+          code: 'ACCOUNT_BANNED',
+          restrictionType: 'account',
+          reason: existingUser.account_ban_reason || '',
+          bannedUntil: existingUser.account_banned_until || null,
+          canAppeal: true,
+          user: existingUser,
           message: formatBanMessage(existingUser.account_banned_until, existingUser.account_ban_reason),
         };
       }

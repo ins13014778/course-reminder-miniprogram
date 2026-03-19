@@ -6,7 +6,7 @@
         <div class="brand-kicker">Campus Governance Console</div>
         <div class="brand-title">课表提醒后台</div>
         <p class="brand-copy">
-          面向真实运营场景的管理台，统一查看用户、课表、笔记、分享、举报、公告与提醒权限，并直接执行治理动作。
+          面向真实运营场景的管理台，统一查看用户、课表、笔记、分享、举报、申诉、公告与提醒权限，并直接执行治理动作。
         </p>
       </div>
 
@@ -81,6 +81,7 @@ const navItems = [
   { path: '/notes', label: '笔记审核', icon: Memo, permissions: ['note.view'] },
   { path: '/note-shares', label: '笔记分享', icon: Share, permissions: ['note_share.view'] },
   { path: '/reports', label: '内容举报', icon: WarningFilled, permissions: ['report.view'] },
+  { path: '/appeals', label: '用户申诉', icon: Memo, permissions: ['appeal.view'] },
   { path: '/feedback', label: '留言反馈', icon: Memo, permissions: ['feedback.view'] },
   { path: '/announcements', label: '公告运营', icon: Document, permissions: ['announcement.manage'] },
   { path: '/content-pages', label: '页面配置', icon: Document, permissions: ['content.manage'] },
@@ -99,6 +100,7 @@ const titleMap: Record<string, string> = {
   '/notes': '笔记内容审核',
   '/note-shares': '笔记分享管理',
   '/reports': '内容举报审核',
+  '/appeals': '用户申诉处理',
   '/feedback': '用户留言反馈',
   '/announcements': '公告发布管理',
   '/content-pages': '页面内容配置',

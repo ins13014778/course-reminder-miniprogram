@@ -3,14 +3,15 @@
     <section class="hero-panel">
       <div>
         <div class="section-kicker">User Governance</div>
-        <h2>查看用户课表、封禁权限、分享密钥与内容状态都从这里进入。</h2>
+        <h2>统一查看用户课表、笔记、分享密钥与资料违规状态</h2>
         <p>
-          用户页现在不只是名单。你可以点开任意用户查看完整课表、笔记、分享密钥、订阅提醒，并对账号、笔记权限、分享密钥权限执行限时或永久封禁。
+          这里可以直接处理账号、笔记、分享、头像、个性签名五类权限限制，并联动查看该用户的课表、
+          已发布笔记和分享密钥，方便后台做完整审核。
         </p>
       </div>
       <div class="hero-side">
         <strong>{{ users.length }}</strong>
-        <div class="muted-text">位已注册用户</div>
+        <div class="muted-text">已注册用户</div>
       </div>
     </section>
 
@@ -18,7 +19,7 @@
       <div class="panel-header">
         <div>
           <div class="panel-title">用户治理列表</div>
-          <div class="panel-subtitle">支持按昵称、学校、专业、OpenID 检索，点开用户后即可进行权限控制。</div>
+          <div class="panel-subtitle">支持昵称、学校、专业、OpenID 搜索，并可直接进入用户详情进行权限控制。</div>
         </div>
         <div class="panel-toolbar">
           <el-input
@@ -55,24 +56,15 @@
           <el-table-column label="密钥" width="80">
             <template #default="{ row }">{{ row.share_count }}</template>
           </el-table-column>
-          <el-table-column label="账号权限" width="110">
+          <el-table-column
+            v-for="item in permissionConfigs"
+            :key="`list-${item.key}`"
+            :label="item.shortLabel"
+            width="112"
+          >
             <template #default="{ row }">
-              <el-tag :type="row.permissions.account.status === 'banned' ? 'danger' : 'success'">
-                {{ row.permissions.account.status === 'banned' ? '已封禁' : '正常' }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="笔记权限" width="110">
-            <template #default="{ row }">
-              <el-tag :type="row.permissions.note.status === 'banned' ? 'warning' : 'success'">
-                {{ row.permissions.note.status === 'banned' ? '已限制' : '正常' }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="密钥权限" width="110">
-            <template #default="{ row }">
-              <el-tag :type="row.permissions.share.status === 'banned' ? 'warning' : 'success'">
-                {{ row.permissions.share.status === 'banned' ? '已限制' : '正常' }}
+              <el-tag :type="row.permissions[item.key].status === 'banned' ? item.tagType : 'success'">
+                {{ row.permissions[item.key].status === 'banned' ? '受限' : '正常' }}
               </el-tag>
             </template>
           </el-table-column>
@@ -91,21 +83,19 @@
     <el-drawer v-model="drawerVisible" size="72%" :with-header="false">
       <div v-if="detail" class="stack-grid">
         <section class="surface-card">
-          <div class="panel-header" style="margin-bottom: 0;">
+          <div class="panel-header" style="margin-bottom: 0">
             <div>
               <div class="section-kicker">User Detail</div>
               <h3>{{ detail.user.nickname || '未命名用户' }}</h3>
-              <p>{{ detail.user.signature || '这个用户还没有填写个性签名。' }}</p>
+              <p>{{ detail.user.signature || '这个用户暂未填写个性签名。' }}</p>
             </div>
             <div class="toolbar-actions">
-              <el-tag :type="detail.user.permissions.account.status === 'banned' ? 'danger' : 'success'">
-                账号{{ detail.user.permissions.account.status === 'banned' ? '已封禁' : '正常' }}
-              </el-tag>
-              <el-tag :type="detail.user.permissions.note.status === 'banned' ? 'warning' : 'success'">
-                笔记{{ detail.user.permissions.note.status === 'banned' ? '已限制' : '正常' }}
-              </el-tag>
-              <el-tag :type="detail.user.permissions.share.status === 'banned' ? 'warning' : 'success'">
-                密钥{{ detail.user.permissions.share.status === 'banned' ? '已限制' : '正常' }}
+              <el-tag
+                v-for="item in permissionConfigs"
+                :key="`detail-${item.key}`"
+                :type="detail.user.permissions[item.key].status === 'banned' ? item.tagType : 'success'"
+              >
+                {{ item.label }}{{ detail.user.permissions[item.key].status === 'banned' ? '受限' : '正常' }}
               </el-tag>
             </div>
           </div>
@@ -132,84 +122,30 @@
 
         <section class="split-grid">
           <div class="stack-grid">
-            <div class="permission-card">
-              <h4>账号权限</h4>
-              <div class="muted-text">封禁后，用户登录与写入操作都会被拦截。</div>
-              <el-form label-position="top" style="margin-top: 12px;">
+            <div v-for="item in permissionConfigs" :key="item.key" class="permission-card">
+              <h4>{{ item.label }}</h4>
+              <div class="muted-text">{{ item.description }}</div>
+              <el-form label-position="top" style="margin-top: 12px">
                 <el-form-item label="状态">
-                  <el-radio-group v-model="permissionForms.account.mode">
+                  <el-radio-group v-model="permissionForms[item.key].mode">
                     <el-radio-button label="active">正常</el-radio-button>
                     <el-radio-button label="banned">封禁</el-radio-button>
                   </el-radio-group>
                 </el-form-item>
                 <el-form-item label="封禁天数">
                   <el-input-number
-                    v-model="permissionForms.account.durationDays"
+                    v-model="permissionForms[item.key].durationDays"
                     :min="1"
-                    :disabled="permissionForms.account.mode !== 'banned' || permissionForms.account.permanent"
+                    :disabled="permissionForms[item.key].mode !== 'banned' || permissionForms[item.key].permanent"
                   />
-                  <el-checkbox v-model="permissionForms.account.permanent" style="margin-left: 12px;">
+                  <el-checkbox v-model="permissionForms[item.key].permanent" style="margin-left: 12px">
                     永久封禁
                   </el-checkbox>
                 </el-form-item>
                 <el-form-item label="原因">
-                  <el-input v-model="permissionForms.account.reason" placeholder="例如：恶意刷接口、违规内容、投诉核实" />
+                  <el-input v-model="permissionForms[item.key].reason" :placeholder="item.placeholder" />
                 </el-form-item>
-                <el-button type="primary" @click="savePermission('account')">保存账号权限</el-button>
-              </el-form>
-            </div>
-
-            <div class="permission-card">
-              <h4>笔记权限</h4>
-              <div class="muted-text">封禁后，用户将无法发布、编辑、删除笔记。</div>
-              <el-form label-position="top" style="margin-top: 12px;">
-                <el-form-item label="状态">
-                  <el-radio-group v-model="permissionForms.note.mode">
-                    <el-radio-button label="active">正常</el-radio-button>
-                    <el-radio-button label="banned">封禁</el-radio-button>
-                  </el-radio-group>
-                </el-form-item>
-                <el-form-item label="封禁天数">
-                  <el-input-number
-                    v-model="permissionForms.note.durationDays"
-                    :min="1"
-                    :disabled="permissionForms.note.mode !== 'banned' || permissionForms.note.permanent"
-                  />
-                  <el-checkbox v-model="permissionForms.note.permanent" style="margin-left: 12px;">
-                    永久封禁
-                  </el-checkbox>
-                </el-form-item>
-                <el-form-item label="原因">
-                  <el-input v-model="permissionForms.note.reason" placeholder="例如：违规笔记、广告刷屏、恶意引流" />
-                </el-form-item>
-                <el-button type="primary" @click="savePermission('note')">保存笔记权限</el-button>
-              </el-form>
-            </div>
-
-            <div class="permission-card">
-              <h4>分享密钥权限</h4>
-              <div class="muted-text">封禁后，用户无法生成、查询或使用分享密钥导入课表。</div>
-              <el-form label-position="top" style="margin-top: 12px;">
-                <el-form-item label="状态">
-                  <el-radio-group v-model="permissionForms.share.mode">
-                    <el-radio-button label="active">正常</el-radio-button>
-                    <el-radio-button label="banned">封禁</el-radio-button>
-                  </el-radio-group>
-                </el-form-item>
-                <el-form-item label="封禁天数">
-                  <el-input-number
-                    v-model="permissionForms.share.durationDays"
-                    :min="1"
-                    :disabled="permissionForms.share.mode !== 'banned' || permissionForms.share.permanent"
-                  />
-                  <el-checkbox v-model="permissionForms.share.permanent" style="margin-left: 12px;">
-                    永久封禁
-                  </el-checkbox>
-                </el-form-item>
-                <el-form-item label="原因">
-                  <el-input v-model="permissionForms.share.reason" placeholder="例如：分享滥用、异常导入、批量传播" />
-                </el-form-item>
-                <el-button type="primary" @click="savePermission('share')">保存密钥权限</el-button>
+                <el-button type="primary" @click="savePermission(item.key)">{{ item.buttonText }}</el-button>
               </el-form>
             </div>
           </div>
@@ -218,8 +154,8 @@
             <section class="surface-card">
               <div class="section-kicker">Schedule</div>
               <h4>用户课表</h4>
-              <div class="muted-text">共 {{ detail.courses.length }} 门课，可直接核查这位用户的完整课表。</div>
-              <div class="editorial-table" style="margin-top: 14px;">
+              <div class="muted-text">共 {{ detail.courses.length }} 门课，可直接核查该用户的完整课表。</div>
+              <div class="editorial-table" style="margin-top: 14px">
                 <el-table :data="detail.courses" max-height="280">
                   <el-table-column prop="course_name" label="课程" min-width="160" />
                   <el-table-column label="时间" min-width="120">
@@ -235,8 +171,8 @@
             <section class="surface-card">
               <div class="section-kicker">Notes</div>
               <h4>用户笔记</h4>
-              <div class="muted-text">共 {{ detail.notes.length }} 条，可辅助判断笔记权限封禁是否需要升级。</div>
-              <div class="editorial-table" style="margin-top: 14px;">
+              <div class="muted-text">共 {{ detail.notes.length }} 条，可辅助判断笔记权限是否需要继续限制。</div>
+              <div class="editorial-table" style="margin-top: 14px">
                 <el-table :data="detail.notes" max-height="220">
                   <el-table-column label="状态" width="90">
                     <template #default="{ row }">
@@ -255,8 +191,8 @@
             <section class="surface-card">
               <div class="section-kicker">Share Keys</div>
               <h4>分享密钥</h4>
-              <div class="muted-text">共 {{ detail.shareKeys.length }} 条，可判断是否需要同步禁用某个密钥。</div>
-              <div class="editorial-table" style="margin-top: 14px;">
+              <div class="muted-text">共 {{ detail.shareKeys.length }} 条，可判断是否需要同步禁用单个分享密钥。</div>
+              <div class="editorial-table" style="margin-top: 14px">
                 <el-table :data="detail.shareKeys" max-height="220">
                   <el-table-column prop="share_key" label="密钥" min-width="140" />
                   <el-table-column label="状态" width="90">
@@ -283,12 +219,70 @@ import { ElMessage } from 'element-plus'
 import { userApi } from '../api'
 import { formatDateTime, sectionLabel, trimText, weekdayLabel } from '../utils/format'
 
+type PermissionKey = 'account' | 'note' | 'share' | 'avatar' | 'signature'
+
 type PermissionFormState = {
   mode: 'active' | 'banned'
   durationDays: number | null
   permanent: boolean
   reason: string
 }
+
+const permissionConfigs: Array<{
+  key: PermissionKey
+  label: string
+  shortLabel: string
+  tagType: 'danger' | 'warning'
+  description: string
+  placeholder: string
+  buttonText: string
+}> = [
+  {
+    key: 'account',
+    label: '账号权限',
+    shortLabel: '账号权限',
+    tagType: 'danger',
+    description: '封禁后，用户登录与绝大多数写入操作都会被拦截。',
+    placeholder: '例如：恶意刷接口、违规行为、确认封号',
+    buttonText: '保存账号权限',
+  },
+  {
+    key: 'note',
+    label: '笔记权限',
+    shortLabel: '笔记权限',
+    tagType: 'warning',
+    description: '封禁后，用户将无法发布、编辑、删除笔记。',
+    placeholder: '例如：违规笔记、广告引流、恶意刷屏',
+    buttonText: '保存笔记权限',
+  },
+  {
+    key: 'share',
+    label: '分享密钥权限',
+    shortLabel: '密钥权限',
+    tagType: 'warning',
+    description: '封禁后，用户无法生成、查询或使用分享密钥导入课表。',
+    placeholder: '例如：分享滥用、异常导入、批量传播',
+    buttonText: '保存密钥权限',
+  },
+  {
+    key: 'avatar',
+    label: '头像权限',
+    shortLabel: '头像权限',
+    tagType: 'warning',
+    description: '封禁后，用户无法重新上传或修改头像，可用于单独处理头像违规。',
+    placeholder: '例如：头像违规、冒名他人、涉黄涉暴',
+    buttonText: '保存头像权限',
+  },
+  {
+    key: 'signature',
+    label: '个性签名权限',
+    shortLabel: '个签权限',
+    tagType: 'warning',
+    description: '封禁后，用户无法修改个性签名，可用于单独处理资料文案违规。',
+    placeholder: '例如：个性签名违规、广告引流、辱骂攻击',
+    buttonText: '保存个签权限',
+  },
+]
 
 const users = ref<any[]>([])
 const loading = ref(true)
@@ -298,10 +292,12 @@ const detailLoading = ref(false)
 const detail = ref<any | null>(null)
 const selectedUserId = ref<number | null>(null)
 
-const permissionForms = reactive<Record<'account' | 'note' | 'share', PermissionFormState>>({
+const permissionForms = reactive<Record<PermissionKey, PermissionFormState>>({
   account: { mode: 'active', durationDays: 7, permanent: false, reason: '' },
   note: { mode: 'active', durationDays: 7, permanent: false, reason: '' },
   share: { mode: 'active', durationDays: 7, permanent: false, reason: '' },
+  avatar: { mode: 'active', durationDays: 7, permanent: false, reason: '' },
+  signature: { mode: 'active', durationDays: 7, permanent: false, reason: '' },
 })
 
 function calcRemainingDays(until?: string | null) {
@@ -316,7 +312,7 @@ function calcRemainingDays(until?: string | null) {
 function syncPermissionForms() {
   if (!detail.value) return
 
-  ;(['account', 'note', 'share'] as const).forEach((key) => {
+  permissionConfigs.forEach(({ key }) => {
     const source = detail.value.user.permissions[key]
     permissionForms[key].mode = source.status === 'banned' ? 'banned' : 'active'
     permissionForms[key].permanent = source.status === 'banned' && !source.bannedUntil
@@ -330,7 +326,7 @@ async function loadData() {
   loading.value = true
   try {
     const res = await userApi.getList({ keyword: keyword.value || undefined })
-    users.value = res.data
+    users.value = res.data || []
   } finally {
     loading.value = false
   }
@@ -357,7 +353,7 @@ async function refreshSelectedUser() {
   await loadData()
 }
 
-async function savePermission(key: 'account' | 'note' | 'share') {
+async function savePermission(key: PermissionKey) {
   if (!selectedUserId.value) return
 
   const source = permissionForms[key]

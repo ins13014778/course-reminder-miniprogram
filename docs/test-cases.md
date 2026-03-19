@@ -366,6 +366,61 @@ npx mcporter call cloudbase.auth action=set_env envId=dawdawd15-8g023nsw8cb3f68a
 - 已有有效订阅
 - 当前时间命中课程提醒窗口
 
+## 4.7 资料违规与申诉
+
+### TC-PROFILE-001 头像被封禁后禁止修改
+
+步骤：
+1. 在后台用户详情中将某个用户的“头像权限”设置为封禁
+2. 回到小程序个人页，点击“换头像”或“自定义头像”
+
+预期结果：
+- 不进入正常上传保存流程，或保存时被明确拦截
+- 用户看到“头像功能受限”的提示
+- 可跳转到申诉中心
+
+### TC-PROFILE-002 个性签名被封禁后禁止修改
+
+步骤：
+1. 在后台用户详情中将某个用户的“个签权限”设置为封禁
+2. 回到小程序个人页，点击“个性签名”
+
+预期结果：
+- 不允许继续修改
+- 用户看到“个性签名功能受限”的提示
+- 可跳转到申诉中心
+
+### TC-APPEAL-001 头像申诉创建成功
+
+前置条件：
+- 当前用户头像权限处于封禁状态
+
+步骤：
+1. 打开小程序申诉中心
+2. 选择“头像申诉”
+3. 填写标题、说明并提交
+
+预期结果：
+- `user_appeals` 新增一条 `appeal_type = 'avatar'` 的待处理记录
+- 小程序提示提交成功
+
+### TC-APPEAL-002 个签申诉审核通过后自动解封
+
+前置条件：
+- 存在一条 `appeal_type = 'signature'` 的待处理申诉
+- 对应用户 `signature_status = 'banned'`
+
+步骤：
+1. 在后台申诉页打开该条记录
+2. 输入 `approved`
+3. 提交后台备注
+
+预期结果：
+- `user_appeals.status = 'approved'`
+- `users.signature_status = 'active'`
+- `users.signature_ban_reason = NULL`
+- `users.signature_banned_until = NULL`
+
 步骤：
 
 1. 等待提醒调度执行

@@ -12,6 +12,7 @@ Page({
     primaryActionText: '',
     primaryActionPage: '',
     feedbackUpdates: [],
+    appealUpdates: [],
   },
 
   onLoad() {
@@ -34,7 +35,7 @@ Page({
         primaryActionPage: extra.primaryActionPage || '/pages/settings/settings',
       });
 
-      await this.loadFeedbackUpdates();
+      await Promise.all([this.loadFeedbackUpdates(), this.loadAppealUpdates()]);
       this.setData({ loading: false });
     } catch (error) {
       console.error('[notification-center] load failed', error);
@@ -63,6 +64,30 @@ Page({
     } catch (error) {
       console.warn('[notification-center] load feedback updates failed', error);
       this.setData({ feedbackUpdates: [] });
+    }
+  },
+
+  async loadAppealUpdates() {
+    if (!hasLoginSession()) {
+      this.setData({ appealUpdates: [] });
+      return;
+    }
+
+    try {
+      const userId = await resolveCurrentUserId();
+      const rows = await callDbQuery(
+        `SELECT id, title, appeal_type, status, admin_note, reviewed_at
+           FROM user_appeals
+          WHERE user_id = ? AND status IN ('approved', 'rejected')
+          ORDER BY reviewed_at DESC, updated_at DESC
+          LIMIT 5`,
+        [userId],
+      ).catch(() => []);
+
+      this.setData({ appealUpdates: rows || [] });
+    } catch (error) {
+      console.warn('[notification-center] load appeal updates failed', error);
+      this.setData({ appealUpdates: [] });
     }
   },
 

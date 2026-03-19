@@ -1,4 +1,5 @@
 const { getLoginToken, getStoredUser, hasLoginSession, updateStoredUser } = require('./auth');
+const { handleRestrictionFailure } = require('./restriction');
 
 function callDbQuery(sql, params = []) {
   return new Promise((resolve, reject) => {
@@ -12,9 +13,16 @@ function callDbQuery(sql, params = []) {
           return;
         }
 
-        reject(new Error((result && result.message) || '数据库操作失败'));
+        handleRestrictionFailure(result).then((handledError) => {
+          if (handledError) {
+            reject(handledError);
+            return;
+          }
+
+          reject(new Error((result && result.message) || '数据库操作失败'));
+        });
       },
-      fail: (error) => reject(error)
+      fail: (error) => reject(error),
     });
   });
 }
@@ -34,11 +42,7 @@ async function resolveCurrentUserId() {
     throw new Error('登录状态已失效');
   }
 
-  const rows = await callDbQuery(
-    'SELECT id FROM users WHERE openid = ? LIMIT 1',
-    [token]
-  );
-
+  const rows = await callDbQuery('SELECT id FROM users WHERE openid = ? LIMIT 1', [token]);
   if (!rows.length) {
     throw new Error('未找到当前用户');
   }
@@ -50,5 +54,5 @@ async function resolveCurrentUserId() {
 
 module.exports = {
   callDbQuery,
-  resolveCurrentUserId
+  resolveCurrentUserId,
 };

@@ -52,6 +52,11 @@ export const reportApi = {
   review: (id: number, data: any) => request.patch(`/admin/reports/${id}/review`, data),
 }
 
+export const appealApi = {
+  getList: (params?: any) => request.get('/admin/appeals', { params }),
+  review: (id: number, data: any) => request.patch(`/admin/appeals/${id}/review`, data),
+}
+
 export const feedbackApi = {
   getList: (params?: any) => request.get('/admin/feedback', { params }),
   review: (id: number, data: any) => request.patch(`/admin/feedback/${id}/review`, data),

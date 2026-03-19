@@ -1,0 +1,88 @@
+<view class="page-shell">
+  <view class="hero-card">
+    <text class="eyebrow">APPEAL CENTER</text>
+    <text class="hero-title">申诉中心</text>
+    <text class="hero-sub">
+      如果你的账号、笔记、分享、头像或个性签名功能被限制，可以在这里提交申诉，后台审核结果会同步到通知中心。
+    </text>
+  </view>
+
+  <view class="panel-card">
+    <text class="panel-title">当前可申诉限制</text>
+    <view wx:if="{{restrictions.length}}" class="record-list">
+      <view class="record-item" wx:for="{{restrictions}}" wx:key="type">
+        <view class="record-top">
+          <text class="record-title">{{item.label}}</text>
+          <text class="record-status">{{item.expiresText}}</text>
+        </view>
+        <text class="record-content">{{item.reasonText}}</text>
+      </view>
+    </view>
+    <view wx:else class="empty-state">当前没有可申诉的限制状态。</view>
+  </view>
+
+  <view class="panel-card">
+    <text class="panel-title">提交申诉</text>
+
+    <view class="field-block">
+      <text class="field-label">申诉类型</text>
+      <picker mode="selector" range="{{restrictionLabels}}" value="{{restrictionIndex}}" bindchange="onRestrictionChange">
+        <view class="picker-card">
+          <text class="picker-value">{{restrictionLabels[restrictionIndex] || '当前暂无可申诉限制'}}</text>
+          <text class="picker-arrow">></text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="field-block">
+      <text class="field-label">申诉标题</text>
+      <input
+        class="text-input"
+        placeholder="例如：误判违规，希望重新审核"
+        value="{{title}}"
+        maxlength="120"
+        bindinput="onTitleInput"
+      />
+    </view>
+
+    <view class="field-block">
+      <text class="field-label">详细说明</text>
+      <textarea
+        class="text-area"
+        placeholder="请尽量描述清楚你的情况、原因和希望后台重新核实的内容。"
+        value="{{content}}"
+        maxlength="1000"
+        bindinput="onContentInput"
+      />
+    </view>
+
+    <view class="field-block">
+      <text class="field-label">联系方式（可选）</text>
+      <input
+        class="text-input"
+        placeholder="可填写微信号、QQ、邮箱，方便联系"
+        value="{{contact}}"
+        maxlength="100"
+        bindinput="onContactInput"
+      />
+    </view>
+
+    <view class="submit-btn" bindtap="onSubmit">{{loading ? '提交中...' : '提交申诉'}}</view>
+  </view>
+
+  <view class="panel-card">
+    <text class="panel-title">最近申诉记录</text>
+    <view wx:if="{{records.length}}" class="record-list">
+      <view class="record-item" wx:for="{{records}}" wx:key="id">
+        <view class="record-top">
+          <text class="record-title">{{item.title}}</text>
+          <text class="record-status">{{statusLabel(item.status)}}</text>
+        </view>
+        <text class="record-meta">{{appealTypeLabel(item.appeal_type)}} · {{item.created_at}}</text>
+        <text class="record-content">{{item.content}}</text>
+        <text wx:if="{{item.admin_note}}" class="record-note">后台备注：{{item.admin_note}}</text>
+      </view>
+    </view>
+    <view wx:else class="empty-state">你还没有提交过申诉。</view>
+  </view>
+</view>

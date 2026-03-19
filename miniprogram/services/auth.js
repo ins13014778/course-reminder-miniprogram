@@ -1,4 +1,5 @@
 const db = require('./database');
+const { buildRestrictionError } = require('../utils/restriction');
 
 const authService = {
   async login(userInfo = {}) {
@@ -15,6 +16,13 @@ const authService = {
       });
 
       if (!result || result.success !== true || !result.user) {
+        if (result && result.code === 'ACCOUNT_BANNED') {
+          const error = buildRestrictionError(result);
+          error.token = openid;
+          error.user = result.user || {};
+          throw error;
+        }
+
         throw new Error((result && result.message) || '创建用户失败');
       }
 

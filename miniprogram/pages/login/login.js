@@ -1,5 +1,6 @@
 const authService = require('../../services/auth');
 const { setLoginSession } = require('../../utils/auth');
+const { promptRestrictionAppeal } = require('../../utils/restriction');
 
 Page({
   data: {},
@@ -28,6 +29,12 @@ Page({
           }, 1000);
         } catch (error) {
           wx.hideLoading();
+          if (error && error.canAppeal && error.token) {
+            setLoginSession(error.user || {}, error.token);
+            await promptRestrictionAppeal(error);
+            return;
+          }
+
           wx.showToast({ title: (error && error.message) || '登录失败', icon: 'none' });
           console.error('[Login] 登录失败:', error);
         }

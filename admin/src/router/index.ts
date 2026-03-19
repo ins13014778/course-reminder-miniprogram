@@ -14,6 +14,7 @@ const routes = [
   { path: '/notes', component: () => import('../views/Notes.vue'), meta: { permissions: ['note.view'] } },
   { path: '/note-shares', component: () => import('../views/NoteShares.vue'), meta: { permissions: ['note_share.view'] } },
   { path: '/reports', component: () => import('../views/Reports.vue'), meta: { permissions: ['report.view'] } },
+  { path: '/appeals', component: () => import('../views/Appeals.vue'), meta: { permissions: ['appeal.view'] } },
   { path: '/feedback', component: () => import('../views/Feedback.vue'), meta: { permissions: ['feedback.view'] } },
   { path: '/announcements', component: () => import('../views/Announcements.vue'), meta: { permissions: ['announcement.manage'] } },
   { path: '/content-pages', component: () => import('../views/ContentPages.vue'), meta: { permissions: ['content.manage'] } },

@@ -33,11 +33,20 @@ function isSafeSql(sql) {
 }
 
 function isWriteSql(sql) {
-  return /^(INSERT|UPDATE|DELETE|REPLACE|ALTER|CREATE|DROP|TRUNCATE)\b/i.test(sql.trim());
+  return /^(INSERT|UPDATE|DELETE|REPLACE|ALTER|CREATE|DROP|TRUNCATE)\b/i.test(String(sql || '').trim());
 }
 
 function touchesTable(sql, tableName) {
-  return new RegExp(`\\b${tableName}\\b`, 'i').test(sql);
+  return new RegExp(`\\b${tableName}\\b`, 'i').test(String(sql || ''));
+}
+
+function normalizeSql(sql) {
+  return String(sql || '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function updatesUserColumn(sql, columnName) {
+  const normalizedSql = normalizeSql(sql);
+  return normalizedSql.startsWith('update users') && new RegExp(`\\b${columnName}\\s*=`, 'i').test(sql);
 }
 
 function isBanActive(status, bannedUntil) {
@@ -68,6 +77,52 @@ function formatBanMessage(label, bannedUntil, reason) {
   return `${label}已被封禁至 ${untilText}${reasonText}`;
 }
 
+function createRestrictionError(code, restrictionType, label, bannedUntil, reason) {
+  const error = new Error(formatBanMessage(label, bannedUntil, reason));
+  error.code = code;
+  error.restrictionType = restrictionType;
+  error.reason = reason || '';
+  error.bannedUntil = bannedUntil || null;
+  error.canAppeal = true;
+  return error;
+}
+
+function isOwnUserSelect(sql, params, callerUser) {
+  const normalizedSql = normalizeSql(sql);
+
+  if (!normalizedSql.startsWith('select') || !normalizedSql.includes(' from users ')) {
+    return false;
+  }
+
+  if (normalizedSql.includes(' where openid = ?')) {
+    return String(params?.[0] || '') === String(callerUser.openid || '');
+  }
+
+  if (normalizedSql.includes(' where id = ?')) {
+    return Number(params?.[0]) === Number(callerUser.id);
+  }
+
+  return false;
+}
+
+function isOwnAppealQuery(sql, params, callerUser) {
+  const normalizedSql = normalizeSql(sql);
+
+  if (normalizedSql.startsWith('select') && normalizedSql.includes(' from user_appeals ')) {
+    return Number(params?.[0]) === Number(callerUser.id);
+  }
+
+  if (normalizedSql.startsWith('insert into user_appeals')) {
+    return Number(params?.[0]) === Number(callerUser.id);
+  }
+
+  return false;
+}
+
+function isAllowedForAccountAppeal(sql, params, callerUser) {
+  return isOwnUserSelect(sql, params, callerUser) || isOwnAppealQuery(sql, params, callerUser);
+}
+
 async function getCallerUser(openid) {
   if (!openid) {
     return null;
@@ -85,7 +140,13 @@ async function getCallerUser(openid) {
         note_banned_until,
         share_status,
         share_ban_reason,
-        share_banned_until
+        share_banned_until,
+        avatar_status,
+        avatar_ban_reason,
+        avatar_banned_until,
+        signature_status,
+        signature_ban_reason,
+        signature_banned_until
      FROM users
      WHERE openid = ?
      LIMIT 1`,
@@ -95,15 +156,23 @@ async function getCallerUser(openid) {
   return rows[0] || null;
 }
 
-function enforcePermissions(sql, callerUser) {
+function enforcePermissions(sql, params, callerUser) {
   if (!callerUser) {
     return;
   }
 
   if (isBanActive(callerUser.account_status, callerUser.account_banned_until)) {
-    throw new Error(
-      formatBanMessage('账号', callerUser.account_banned_until, callerUser.account_ban_reason),
-    );
+    if (!isAllowedForAccountAppeal(sql, params, callerUser)) {
+      throw createRestrictionError(
+        'ACCOUNT_BANNED',
+        'account',
+        '账号',
+        callerUser.account_banned_until,
+        callerUser.account_ban_reason,
+      );
+    }
+
+    return;
   }
 
   if (
@@ -111,23 +180,57 @@ function enforcePermissions(sql, callerUser) {
     touchesTable(sql, 'notes') &&
     isWriteSql(sql)
   ) {
-    throw new Error(
-      formatBanMessage('笔记权限', callerUser.note_banned_until, callerUser.note_ban_reason),
+    throw createRestrictionError(
+      'NOTE_BANNED',
+      'note',
+      '笔记功能',
+      callerUser.note_banned_until,
+      callerUser.note_ban_reason,
     );
   }
 
   if (
     isBanActive(callerUser.share_status, callerUser.share_banned_until) &&
     isWriteSql(sql) &&
-    (
-      touchesTable(sql, 'schedule_share_keys') ||
+    (touchesTable(sql, 'schedule_share_keys') ||
       touchesTable(sql, 'note_shares') ||
       /\bshare_key\b/i.test(sql) ||
-      /\bshare_code\b/i.test(sql)
-    )
+      /\bshare_code\b/i.test(sql))
   ) {
-    throw new Error(
-      formatBanMessage('分享密钥权限', callerUser.share_banned_until, callerUser.share_ban_reason),
+    throw createRestrictionError(
+      'SHARE_BANNED',
+      'share',
+      '分享功能',
+      callerUser.share_banned_until,
+      callerUser.share_ban_reason,
+    );
+  }
+
+  if (
+    isBanActive(callerUser.avatar_status, callerUser.avatar_banned_until) &&
+    isWriteSql(sql) &&
+    updatesUserColumn(sql, 'avatar_url')
+  ) {
+    throw createRestrictionError(
+      'AVATAR_BANNED',
+      'avatar',
+      '头像功能',
+      callerUser.avatar_banned_until,
+      callerUser.avatar_ban_reason,
+    );
+  }
+
+  if (
+    isBanActive(callerUser.signature_status, callerUser.signature_banned_until) &&
+    isWriteSql(sql) &&
+    updatesUserColumn(sql, 'signature')
+  ) {
+    throw createRestrictionError(
+      'SIGNATURE_BANNED',
+      'signature',
+      '个性签名功能',
+      callerUser.signature_banned_until,
+      callerUser.signature_ban_reason,
     );
   }
 }
@@ -145,7 +248,7 @@ exports.main = async (event) => {
   try {
     const wxContext = cloud.getWXContext();
     const callerUser = await getCallerUser(wxContext.OPENID);
-    enforcePermissions(sql, callerUser);
+    enforcePermissions(sql, params, callerUser);
 
     const [rows] = await getPool().execute(sql, params);
     return { success: true, data: rows };
@@ -153,6 +256,11 @@ exports.main = async (event) => {
     console.error('[db-query] execute failed:', error);
     return {
       success: false,
+      code: error.code || '',
+      restrictionType: error.restrictionType || '',
+      reason: error.reason || '',
+      bannedUntil: error.bannedUntil || null,
+      canAppeal: error.canAppeal === true,
       message: error.message || 'Database query failed',
     };
   }

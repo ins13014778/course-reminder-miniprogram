@@ -3,8 +3,8 @@
     <section class="hero-panel">
       <div>
         <div class="section-kicker">Admin Accounts</div>
-        <h2>后台从“只有一个万能账号”升级成可分角色协作的管理员体系。</h2>
-        <p>超级管理员可以在这里新增管理员账号、分配权限，并保护系统默认超管账号不被后台误降权或停用。</p>
+        <h2>把后台从单一管理员账号升级成可分角色协作的权限体系。</h2>
+        <p>超级管理员可以在这里新增管理员账号、分配权限，并保护系统默认超管账号不被误降权或停用。</p>
       </div>
       <div class="hero-side">
         <strong>{{ rows.length }}</strong>
@@ -17,7 +17,7 @@
         <div class="panel-header">
           <div>
             <div class="panel-title">管理员列表</div>
-            <div class="panel-subtitle">系统默认超管账号只可查看，不允许在这里改角色或停用。</div>
+            <div class="panel-subtitle">系统默认超管账号仅可查看，不允许在这里修改角色或停用。</div>
           </div>
         </div>
 
@@ -123,6 +123,8 @@ const permissionOptions = [
   { key: 'note_share.manage', label: '管理笔记分享' },
   { key: 'report.view', label: '查看举报' },
   { key: 'report.review', label: '处理举报' },
+  { key: 'appeal.view', label: '查看申诉' },
+  { key: 'appeal.review', label: '处理申诉' },
   { key: 'feedback.view', label: '查看反馈' },
   { key: 'feedback.review', label: '处理反馈' },
   { key: 'announcement.manage', label: '管理公告' },

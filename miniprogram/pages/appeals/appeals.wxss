@@ -1,0 +1,163 @@
+.page-shell {
+  min-height: 100vh;
+  padding: 24rpx 24rpx 48rpx;
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at top right, rgba(201, 111, 59, 0.14), transparent 26%),
+    linear-gradient(180deg, #fbf7ef 0%, #f3ecdf 100%);
+}
+
+.hero-card,
+.panel-card {
+  padding: 28rpx;
+  border-radius: 28rpx;
+  border: 1rpx solid rgba(30, 59, 47, 0.08);
+  background: rgba(255, 251, 245, 0.92);
+  box-shadow: 0 18rpx 42rpx rgba(53, 44, 30, 0.08);
+}
+
+.panel-card {
+  margin-top: 20rpx;
+}
+
+.eyebrow {
+  display: block;
+  font-size: 18rpx;
+  letter-spacing: 6rpx;
+  color: #c96f3b;
+}
+
+.hero-title {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 52rpx;
+  line-height: 1.04;
+  color: #1e2b23;
+  font-weight: 700;
+}
+
+.hero-sub {
+  display: block;
+  margin-top: 14rpx;
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: #857a67;
+}
+
+.panel-title,
+.field-label {
+  display: block;
+  color: #1e2b23;
+  font-weight: 700;
+}
+
+.panel-title {
+  font-size: 30rpx;
+}
+
+.field-block {
+  margin-top: 20rpx;
+}
+
+.field-label {
+  font-size: 26rpx;
+  margin-bottom: 10rpx;
+}
+
+.picker-card,
+.text-input,
+.text-area {
+  width: 100%;
+  border-radius: 22rpx;
+  border: 1rpx solid rgba(30, 59, 47, 0.08);
+  background: rgba(30, 59, 47, 0.04);
+  color: #1e2b23;
+  box-sizing: border-box;
+}
+
+.picker-card,
+.text-input {
+  min-height: 88rpx;
+  padding: 0 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.picker-value,
+.picker-arrow {
+  font-size: 28rpx;
+}
+
+.text-input {
+  font-size: 28rpx;
+}
+
+.text-area {
+  min-height: 260rpx;
+  padding: 22rpx;
+  font-size: 28rpx;
+  line-height: 1.7;
+}
+
+.submit-btn {
+  margin-top: 24rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+  border-radius: 22rpx;
+  background: #c96f3b;
+  color: #fff8ef;
+  font-size: 30rpx;
+  font-weight: 700;
+  text-align: center;
+}
+
+.record-list {
+  margin-top: 18rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.record-item {
+  padding: 20rpx;
+  border-radius: 22rpx;
+  background: rgba(30, 59, 47, 0.04);
+}
+
+.record-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.record-title {
+  font-size: 28rpx;
+  color: #1e2b23;
+  font-weight: 700;
+}
+
+.record-status,
+.record-meta,
+.record-note,
+.record-content,
+.empty-state {
+  color: #857a67;
+}
+
+.record-meta,
+.record-note,
+.empty-state {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 22rpx;
+}
+
+.record-content {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}

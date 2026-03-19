@@ -116,6 +116,22 @@ export class AdminController {
     return this.adminService.reviewReport(id, payload, request.admin);
   }
 
+  @Get('appeals')
+  @AdminPermissions('appeal.view')
+  getAppeals(
+    @Query('keyword') keyword?: string,
+    @Query('status') status?: string,
+    @Query('appealType') appealType?: string,
+  ) {
+    return this.adminService.getAppeals(keyword, status, appealType);
+  }
+
+  @Patch('appeals/:id/review')
+  @AdminPermissions('appeal.review')
+  reviewAppeal(@Req() request: any, @Param('id', ParseIntPipe) id: number, @Body() payload: any) {
+    return this.adminService.reviewAppeal(id, payload, request.admin);
+  }
+
   @Get('feedback')
   @AdminPermissions('feedback.view')
   getFeedback(

@@ -4,7 +4,7 @@ export const ADMIN_PERMISSIONS_KEY = 'admin:permissions';
 
 export const ADMIN_PERMISSION_OPTIONS = [
   { key: 'user.view', label: '查看用户' },
-  { key: 'user.ban', label: '封禁账号/笔记/分享' },
+  { key: 'user.ban', label: '封禁账号/笔记/分享/头像/个签' },
   { key: 'course.view', label: '查看课表' },
   { key: 'course.manage', label: '管理课表' },
   { key: 'share.view', label: '查看课表分享' },
@@ -17,6 +17,8 @@ export const ADMIN_PERMISSION_OPTIONS = [
   { key: 'note_share.manage', label: '管理笔记分享' },
   { key: 'report.view', label: '查看举报' },
   { key: 'report.review', label: '处理举报' },
+  { key: 'appeal.view', label: '查看用户申诉' },
+  { key: 'appeal.review', label: '处理用户申诉' },
   { key: 'feedback.view', label: '查看反馈' },
   { key: 'feedback.review', label: '处理反馈' },
   { key: 'announcement.manage', label: '管理公告' },
