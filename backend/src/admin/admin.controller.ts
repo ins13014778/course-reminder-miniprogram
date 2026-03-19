@@ -44,6 +44,12 @@ export class AdminController {
     return this.adminService.updateUserPermissions(id, payload, request.admin);
   }
 
+  @Post('users/batch-permissions')
+  @AdminPermissions('user.ban')
+  batchUpdateUserPermissions(@Req() request: any, @Body() payload: any) {
+    return this.adminService.batchUpdateUserPermissions(payload, request.admin);
+  }
+
   @Get('courses')
   @AdminPermissions('course.view')
   getCourses(@Query('keyword') keyword?: string, @Query('weekday') weekday?: string) {
@@ -74,6 +80,12 @@ export class AdminController {
     return this.adminService.updateShareKeyStatus(id, payload, request.admin);
   }
 
+  @Patch('share-keys/batch-status')
+  @AdminPermissions('share.manage')
+  batchUpdateShareKeyStatus(@Req() request: any, @Body() payload: any) {
+    return this.adminService.batchUpdateShareKeyStatus(payload, request.admin);
+  }
+
   @Get('subscriptions')
   @AdminPermissions('subscription.view')
   getSubscriptions() {
@@ -92,6 +104,12 @@ export class AdminController {
     return this.adminService.moderateNote(id, payload, request.admin);
   }
 
+  @Patch('notes/batch-moderation')
+  @AdminPermissions('note.moderate')
+  batchModerateNotes(@Req() request: any, @Body() payload: any) {
+    return this.adminService.batchModerateNotes(payload, request.admin);
+  }
+
   @Get('note-shares')
   @AdminPermissions('note_share.view')
   getNoteShares(@Query('keyword') keyword?: string) {
@@ -104,6 +122,12 @@ export class AdminController {
     return this.adminService.updateNoteShareStatus(id, payload, request.admin);
   }
 
+  @Patch('note-shares/batch-status')
+  @AdminPermissions('note_share.manage')
+  batchUpdateNoteShareStatus(@Req() request: any, @Body() payload: any) {
+    return this.adminService.batchUpdateNoteShareStatus(payload, request.admin);
+  }
+
   @Get('reports')
   @AdminPermissions('report.view')
   getReports(@Query('keyword') keyword?: string, @Query('status') status?: string) {
@@ -114,6 +138,12 @@ export class AdminController {
   @AdminPermissions('report.review')
   reviewReport(@Req() request: any, @Param('id', ParseIntPipe) id: number, @Body() payload: any) {
     return this.adminService.reviewReport(id, payload, request.admin);
+  }
+
+  @Patch('reports/batch-review')
+  @AdminPermissions('report.review')
+  batchReviewReports(@Req() request: any, @Body() payload: any) {
+    return this.adminService.batchReviewReports(payload, request.admin);
   }
 
   @Get('appeals')
@@ -152,6 +182,23 @@ export class AdminController {
   @AdminPermissions('reminder_log.view')
   getReminderLogs(@Query('keyword') keyword?: string, @Query('status') status?: string) {
     return this.adminService.getReminderLogs(keyword, status);
+  }
+
+  @Get('reminder-logs/summary')
+  @AdminPermissions('reminder_log.view')
+  getReminderLogSummary() {
+    return this.adminService.getReminderLogSummary();
+  }
+
+  @Post('reminder-logs/retry')
+  @AdminPermissions('reminder_log.view')
+  retryReminderLogs(@Req() request: any, @Body() payload: any) {
+    return this.adminService.retryReminderLogs(payload, request.admin);
+  }
+
+  @Post('high-risk-actions/challenge')
+  createHighRiskChallenge(@Req() request: any, @Body() payload: any) {
+    return this.adminService.createHighRiskChallenge(payload, request.admin);
   }
 
   @AdminPermissions('audit.view')

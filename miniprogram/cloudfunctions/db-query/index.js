@@ -119,8 +119,46 @@ function isOwnAppealQuery(sql, params, callerUser) {
   return false;
 }
 
+function isOwnFeedbackQuery(sql, params, callerUser) {
+  const normalizedSql = normalizeSql(sql);
+
+  if (normalizedSql.startsWith('select') && normalizedSql.includes(' from user_feedback ')) {
+    return Number(params?.[0]) === Number(callerUser.id);
+  }
+
+  return false;
+}
+
+function isOwnMessageReadQuery(sql, params, callerUser) {
+  const normalizedSql = normalizeSql(sql);
+
+  if (normalizedSql.startsWith('insert into user_message_reads')) {
+    return Number(params?.[0]) === Number(callerUser.id);
+  }
+
+  if (normalizedSql.startsWith('select') && normalizedSql.includes(' from user_message_reads ')) {
+    return Number(params?.[0]) === Number(callerUser.id);
+  }
+
+  return false;
+}
+
+function isPublicNotificationQuery(sql) {
+  const normalizedSql = normalizeSql(sql);
+  return (
+    normalizedSql.startsWith('select') &&
+    (normalizedSql.includes(' from announcements ') || normalizedSql.includes(' from content_pages '))
+  );
+}
+
 function isAllowedForAccountAppeal(sql, params, callerUser) {
-  return isOwnUserSelect(sql, params, callerUser) || isOwnAppealQuery(sql, params, callerUser);
+  return (
+    isOwnUserSelect(sql, params, callerUser) ||
+    isOwnAppealQuery(sql, params, callerUser) ||
+    isOwnFeedbackQuery(sql, params, callerUser) ||
+    isOwnMessageReadQuery(sql, params, callerUser) ||
+    isPublicNotificationQuery(sql)
+  );
 }
 
 async function getCallerUser(openid) {

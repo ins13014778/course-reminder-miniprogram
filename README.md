@@ -1,104 +1,117 @@
-# 课表提醒项目
+# 课表提醒系统
 
-这是一个基于 CloudBase 的多端项目，当前仓库包含：
+最后更新：`2026-03-20`
+
+这是一个多端课表提醒与内容治理项目仓库，当前包含：
 
 - `miniprogram/`：微信小程序
 - `backend/`：NestJS API 与提醒调度服务
 - `admin/`：Vue 3 + Vite 管理后台
-- `database/`：数据库迁移与开源结构文件
-- `docs/`：开发交接、API、部署与测试文档
+- `database/`：开源数据库结构与迁移 SQL
+- `docs/`：开发、部署、接口、测试和交接文档
 
-## 当前已落地能力
+## 当前最重要的阅读入口
 
-- 微信登录与用户资料初始化
-- 课表导入、维护、分享导入
-- 课前订阅提醒
-- 公告发布与前端展示
-- 笔记、笔记分享、举报、反馈闭环
-- 后台管理员登录、角色分级、细粒度权限控制
-- 后台用户治理、封号、封笔记、封分享
-- 提醒发送日志、后台审计日志
+如果你是第一次接手本仓库，优先看这些文档：
 
-## 真实运行环境
+1. [AGENTS.md](./AGENTS.md)
+2. [docs/secondary-development-guide.md](./docs/secondary-development-guide.md)
+3. [docs/developer-handoff.md](./docs/developer-handoff.md)
+4. [docs/api-reference.md](./docs/api-reference.md)
+5. [docs/database-open-source.md](./docs/database-open-source.md)
+6. [docs/test-cases.md](./docs/test-cases.md)
 
-- CloudBase `envId`：`dawdawd15-8g023nsw8cb3f68a`
-- CloudBase `alias`：`dawdawd15`
-- Region：`ap-shanghai`
+## 当前项目状态
 
-当前数据库结构、管理员权限表、反馈表、内容页表、提醒日志表等，都以 CloudBase 线上真实结构为准，不要只看旧 SQL 草稿。
+当前项目的真实运行状态有几个关键点：
+
+- 小程序当前主链路仍以 `wx.cloud + 云函数 + db-query` 为主
+- 后端和管理后台已经可以独立部署
+- CloudBase 线上数据库结构是当前事实来源
+- `backend/src/app.module.ts` 中 `synchronize: false`
+- 管理员权限不是单纯角色判断，而是 `role + status + permission_json`
 
 ## 本地启动
 
-后端：
+### 后端
 
-```powershell
-cd E:\codebese1\backend
+```bash
+cd backend
 npm install
+npm run build
 npm run start:dev
 ```
 
-后台：
+### 后台
 
-```powershell
-cd E:\codebese1\admin
+```bash
+cd admin
 npm install
+npm run build
 npm run dev
 ```
 
-访问地址：
+### 小程序
 
-- 后台：`http://localhost:5173`
-- API：`http://localhost:3000`
+用微信开发者工具打开：
 
-## 开发与部署文档
+- `E:\codebese1\miniprogram`
 
-- [开发交接文档](./docs/developer-handoff.md)
-- [API 接口文档](./docs/api-reference.md)
-- [宝塔部署教程](./docs/backend-deployment.md)
-- [数据库开源结构说明](./docs/database-open-source.md)
-- [上线检查清单](./docs/release-checklist.md)
-- [管理员权限矩阵](./docs/admin-permission-matrix.md)
-- [测试用例文档](./docs/test-cases.md)
+并确认：
 
-## 开源数据库结构
+- `miniprogram/project.config.json`
+- `miniprogram/app.js`
 
-本仓库已附带不含任何生产数据的开源结构文件：
+## 环境与部署
+
+### CloudBase 真实环境
+
+- `envId`: `dawdawd15-8g023nsw8cb3f68a`
+- `alias`: `dawdawd15`
+- `region`: `ap-shanghai`
+
+操作 CloudBase 前建议先执行：
+
+```bash
+npx mcporter describe cloudbase
+npx mcporter call cloudbase.auth action=status --output json
+npx mcporter call cloudbase.auth action=set_env envId=dawdawd15-8g023nsw8cb3f68a --output json
+npx mcporter call cloudbase.envQuery action=info --output json
+```
+
+### 宝塔部署入口
+
+如果你要把 API 和后台部署到宝塔，优先看：
+
+- [docs/secondary-development-guide.md](./docs/secondary-development-guide.md)
+- [docs/backend-deployment.md](./docs/backend-deployment.md)
+
+## 数据库开源结构
+
+当前推荐使用的数据库结构文件：
 
 - [database/open-source-schema.sql](./database/open-source-schema.sql)
 
-该文件基于 `2026-03-19` 对 CloudBase 线上 MySQL 执行 `SHOW CREATE TABLE` 整理而成，只保留表结构、索引、字段，不包含任何用户数据。
+增量迁移文件：
 
-## 开源 API 说明
+- [database/migrations/2026-03-19-add-governance-batch-messages.sql](./database/migrations/2026-03-19-add-governance-batch-messages.sql)
 
-当前后端接口已经随仓库开源，主要分为：
+不要把这些历史文件当作唯一事实来源：
 
-- 小程序与前台接口
-- 后台管理接口
-- 内容页与公告接口
+- `database/schema.sql`
+- `database/course_templates.sql`
+- `database/notes.sql`
 
-完整清单见：
+## 文档说明
 
-- [docs/api-reference.md](./docs/api-reference.md)
+当前仓库里有部分历史文档存在乱码或过时信息。后续维护时，请优先以这些文件为准：
 
-## 宝塔部署建议
+- `AGENTS.md`
+- `docs/secondary-development-guide.md`
+- `docs/developer-handoff.md`
+- `docs/api-reference.md`
+- `docs/database-open-source.md`
 
-如果你要部署完整项目，推荐分为两部分：
+## 一句话提醒
 
-1. 后端 `backend/` 用 PM2 常驻，Nginx 反代到 API 域名
-2. 后台 `admin/` 构建后作为静态站点部署到宝塔站点目录
-
-完整步骤见：
-
-- [docs/backend-deployment.md](./docs/backend-deployment.md)
-- [backend/README.md](./backend/README.md)
-
-## 维护原则
-
-- 涉及数据库前，优先核对 CloudBase 线上真实表结构
-- 涉及云函数前，确认是否需要重新部署到 CloudBase
-- 涉及后台权限时，优先核对 `admin_accounts.permission_json`
-- 不要把生产数据提交到 GitHub
-
-## 当前仓库说明
-
-这个仓库当前作为主仓库继续维护。后续如果拆分子仓库部署，也建议以本仓库中的文档为主线来源。
+这个项目后续维护的关键，不是盲目改代码，而是先确认你改的是当前真正生效的那条链路。

@@ -114,4 +114,28 @@ async function submit() {
   width: 100%;
   margin-top: 8px;
 }
+
+@media (max-width: 430px) {
+  .login-shell {
+    padding: 14px;
+    align-items: start;
+  }
+
+  .login-panel {
+    width: 100%;
+    margin-top: calc(18px + env(safe-area-inset-top, 0px));
+    padding: 18px 16px;
+    border-radius: 22px;
+  }
+
+  .login-panel h1 {
+    font-size: 28px;
+    line-height: 1.08;
+  }
+
+  .login-copy {
+    font-size: 13px;
+    line-height: 1.7;
+  }
+}
 </style>

@@ -13,6 +13,7 @@ export const userApi = {
   getList: (params?: any) => request.get('/admin/users', { params }),
   getDetail: (id: number) => request.get(`/admin/users/${id}/detail`),
   updatePermissions: (id: number, data: any) => request.patch(`/admin/users/${id}/permissions`, data),
+  batchUpdatePermissions: (data: any) => request.post('/admin/users/batch-permissions', data),
 }
 
 export const courseApi = {
@@ -27,6 +28,7 @@ export const templateApi = {
 export const shareApi = {
   getList: () => request.get('/admin/share-keys'),
   updateStatus: (id: number, data: any) => request.patch(`/admin/share-keys/${id}/status`, data),
+  batchUpdateStatus: (data: any) => request.patch('/admin/share-keys/batch-status', data),
 }
 
 export const subscriptionApi = {
@@ -35,21 +37,26 @@ export const subscriptionApi = {
 
 export const reminderLogApi = {
   getList: (params?: any) => request.get('/admin/reminder-logs', { params }),
+  getSummary: () => request.get('/admin/reminder-logs/summary'),
+  retry: (data: any) => request.post('/admin/reminder-logs/retry', data),
 }
 
 export const noteApi = {
   getList: (params?: any) => request.get('/admin/notes', { params }),
   moderate: (id: number, data: any) => request.patch(`/admin/notes/${id}/moderation`, data),
+  batchModerate: (data: any) => request.patch('/admin/notes/batch-moderation', data),
 }
 
 export const noteShareApi = {
   getList: (params?: any) => request.get('/admin/note-shares', { params }),
   updateStatus: (id: number, data: any) => request.patch(`/admin/note-shares/${id}/status`, data),
+  batchUpdateStatus: (data: any) => request.patch('/admin/note-shares/batch-status', data),
 }
 
 export const reportApi = {
   getList: (params?: any) => request.get('/admin/reports', { params }),
   review: (id: number, data: any) => request.patch(`/admin/reports/${id}/review`, data),
+  batchReview: (data: any) => request.patch('/admin/reports/batch-review', data),
 }
 
 export const appealApi = {
@@ -70,6 +77,10 @@ export const adminAccountApi = {
   getList: () => request.get('/admin/admin-accounts'),
   create: (data: any) => request.post('/admin/admin-accounts', data),
   update: (id: number, data: any) => request.patch(`/admin/admin-accounts/${id}`, data),
+}
+
+export const highRiskApi = {
+  createChallenge: (data: any) => request.post('/admin/high-risk-actions/challenge', data),
 }
 
 export const announcementApi = {

@@ -3,14 +3,12 @@
     <section class="hero-panel">
       <div>
         <div class="section-kicker">Governance Overview</div>
-        <h2>把用户、课表、笔记、分享密钥和提醒授权放进同一张治理视图里。</h2>
-        <p>
-          这里优先展示当前线上数据规模，以及封禁、下架、停用等风险指标，方便你第一眼就知道后台要处理什么。
-        </p>
+        <h2>把用户治理、提醒告警和内容风控放进同一个运营视图里。</h2>
+        <p>这里优先展示当前线上数据规模、待处理风控项、累计违规档案，以及提醒失败的告警强度。</p>
       </div>
       <div class="hero-side">
         <strong>{{ metricCards.length }}</strong>
-        <div class="muted-text">项核心运营指标</div>
+        <div class="muted-text">核心指标</div>
       </div>
     </section>
 
@@ -31,7 +29,6 @@
               <div class="panel-subtitle">帮助你快速看到新增用户来源和资料完整度。</div>
             </div>
           </div>
-
           <div class="editorial-table">
             <el-table :data="data.recentUsers" v-loading="loading">
               <el-table-column prop="id" label="ID" width="80" />
@@ -50,10 +47,9 @@
           <div class="panel-header">
             <div>
               <div class="panel-title">最新课表变动</div>
-              <div class="panel-subtitle">最近写入的课表记录，适合排查异常导入或重复课程。</div>
+              <div class="panel-subtitle">适合排查异常导入或重复课程。</div>
             </div>
           </div>
-
           <div class="editorial-table">
             <el-table :data="data.recentCourses" v-loading="loading">
               <el-table-column prop="course_name" label="课程" min-width="180" />
@@ -70,33 +66,39 @@
       <div class="stack-grid">
         <section class="surface-card">
           <div class="section-kicker">Moderation</div>
-          <h3>权限风险</h3>
-          <p>账号封禁、笔记权限封禁、分享密钥封禁与违规内容下架都会在这里汇总。</p>
-          <div class="metrics-grid" style="margin-top: 14px;">
+          <h3>风控指标</h3>
+          <div class="metrics-grid" style="margin-top: 14px">
             <div class="summary-card">
               <div class="eyebrow">账号封禁</div>
               <div class="value">{{ data.metrics.bannedUsers }}</div>
               <div class="meta">当前仍在封禁期内的用户</div>
             </div>
             <div class="summary-card">
-              <div class="eyebrow">笔记权限封禁</div>
-              <div class="value">{{ data.metrics.noteBans }}</div>
-              <div class="meta">被暂停发布笔记的用户</div>
+              <div class="eyebrow">违规档案</div>
+              <div class="value">{{ data.metrics.totalViolations }}</div>
+              <div class="meta">累计处罚与治理记录总数</div>
             </div>
             <div class="summary-card">
-              <div class="eyebrow">密钥权限封禁</div>
-              <div class="value">{{ data.metrics.shareBans }}</div>
-              <div class="meta">被暂停分享密钥能力的用户</div>
+              <div class="eyebrow">当前生效处罚</div>
+              <div class="value">{{ data.metrics.activeViolations }}</div>
+              <div class="meta">仍处于生效中的处罚</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="surface-card">
+          <div class="section-kicker">Reminder Health</div>
+          <h3>提醒异常告警</h3>
+          <div class="metrics-grid" style="margin-top: 14px">
+            <div class="summary-card">
+              <div class="eyebrow">近 24 小时失败</div>
+              <div class="value">{{ data.metrics.failedReminders24h }}</div>
+              <div class="meta">最近一天发送失败的提醒</div>
             </div>
             <div class="summary-card">
-              <div class="eyebrow">违规笔记下架</div>
-              <div class="value">{{ data.metrics.blockedNotes }}</div>
-              <div class="meta">已被后台隐藏的笔记</div>
-            </div>
-            <div class="summary-card">
-              <div class="eyebrow">密钥停用</div>
-              <div class="value">{{ data.metrics.blockedKeys }}</div>
-              <div class="meta">被后台禁用的分享密钥</div>
+              <div class="eyebrow">重点告警</div>
+              <div class="value">{{ data.metrics.criticalReminderAlerts }}</div>
+              <div class="meta">高重试失败，需要人工处理</div>
             </div>
           </div>
         </section>
@@ -104,12 +106,12 @@
         <section class="surface-card">
           <div class="section-kicker">Content Watch</div>
           <h3>最近更新笔记</h3>
-          <div class="stack-grid" style="margin-top: 14px;">
+          <div class="stack-grid" style="margin-top: 14px">
             <div v-for="note in data.recentNotes" :key="note.id" class="detail-item">
               <strong>{{ note.nickname || '未命名用户' }}</strong>
               <span>{{ trimText(note.content, 90) }}</span>
-              <div class="muted-text" style="margin-top: 8px;">
-                {{ formatDateTime(note.updated_at) }} · {{ note.status === 'blocked' ? '已下架' : '正常' }}
+              <div class="muted-text" style="margin-top: 8px">
+                {{ formatDateTime(note.updated_at) }} / {{ note.status === 'blocked' ? '已下架' : '正常' }}
               </div>
             </div>
           </div>
@@ -118,18 +120,18 @@
         <section class="surface-card">
           <div class="section-kicker">Feature Health</div>
           <h3>关键数据表状态</h3>
-          <div class="stack-grid" style="margin-top: 14px;">
+          <div class="stack-grid" style="margin-top: 14px">
             <div class="status-dot" :class="data.featureHealth.remindersTable ? 'success' : 'danger'">
               提醒表 {{ data.featureHealth.remindersTable ? '正常' : '缺失' }}
-            </div>
-            <div class="status-dot" :class="data.featureHealth.importTasksTable ? 'success' : 'danger'">
-              导入任务表 {{ data.featureHealth.importTasksTable ? '正常' : '缺失' }}
             </div>
             <div class="status-dot" :class="data.featureHealth.notesTable ? 'success' : 'danger'">
               笔记表 {{ data.featureHealth.notesTable ? '正常' : '缺失' }}
             </div>
             <div class="status-dot" :class="data.featureHealth.announcementTable ? 'success' : 'danger'">
               公告表 {{ data.featureHealth.announcementTable ? '正常' : '缺失' }}
+            </div>
+            <div class="status-dot" :class="data.featureHealth.violationTable ? 'success' : 'danger'">
+              违规档案表 {{ data.featureHealth.violationTable ? '正常' : '缺失' }}
             </div>
           </div>
         </section>
@@ -158,27 +160,37 @@ const data = reactive({
     shareBans: 0,
     blockedNotes: 0,
     blockedKeys: 0,
+    totalViolations: 0,
+    activeViolations: 0,
+    failedReminders24h: 0,
+    criticalReminderAlerts: 0,
   },
   recentUsers: [] as any[],
   recentNotes: [] as any[],
   recentCourses: [] as any[],
+  reminderSummary: {
+    latestAlerts: [] as any[],
+  },
   featureHealth: {
     remindersTable: false,
     importTasksTable: false,
     notesTable: false,
     announcementTable: false,
+    appealTable: false,
+    feedbackTable: false,
+    violationTable: false,
   },
 })
 
 const metricCards = computed(() => [
-  { label: '注册用户', value: data.metrics.users, meta: '当前已注册的小程序用户数量' },
-  { label: '课表总量', value: data.metrics.courses, meta: '已写入数据库的课表课程总数' },
-  { label: '笔记总量', value: data.metrics.notes, meta: '包含正常与已下架的所有笔记' },
-  { label: '活跃订阅', value: data.metrics.activeSubscriptions, meta: '还处于 active 状态的提醒授权' },
-  { label: '可用分享密钥', value: data.metrics.activeShares, meta: '当前仍可使用的分享密钥数量' },
-  { label: '模板课程', value: data.metrics.templateCourses, meta: '默认模板课表资产数量' },
-  { label: '已发布公告', value: data.metrics.publishedAnnouncements, meta: '前台当前可见的公告数量' },
-  { label: '风控事项', value: data.metrics.bannedUsers + data.metrics.blockedNotes + data.metrics.blockedKeys, meta: '需要后台持续关注的封禁与下架项' },
+  { label: '注册用户', value: data.metrics.users, meta: '当前已注册的小程序用户数' },
+  { label: '课表总量', value: data.metrics.courses, meta: '已写入数据库的课程总数' },
+  { label: '笔记总量', value: data.metrics.notes, meta: '包含正常与已下架的全部笔记' },
+  { label: '活跃订阅', value: data.metrics.activeSubscriptions, meta: '处于 active 状态的提醒授权' },
+  { label: '可用分享密钥', value: data.metrics.activeShares, meta: '当前仍可使用的课表分享密钥' },
+  { label: '已发布公告', value: data.metrics.publishedAnnouncements, meta: '用户端当前可见的公告数量' },
+  { label: '待审核举报', value: data.metrics.pendingReports, meta: '尚未处理的内容举报' },
+  { label: '提醒重点告警', value: data.metrics.criticalReminderAlerts, meta: '提醒失败重试较高的风险项' },
 ])
 
 async function loadData() {

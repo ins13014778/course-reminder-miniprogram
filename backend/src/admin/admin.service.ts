@@ -1,9 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { randomInt } from 'crypto';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { DataSource } from 'typeorm';
 import { AdminAuditService } from './admin-audit.service';
 import { ADMIN_PERMISSION_OPTIONS, AdminPermission } from './admin-permissions.decorator';
+import { MessageSenderService } from '../reminders/message-sender.service';
 
 type QueryValue = string | number | boolean | null;
 type PermissionMode = 'active' | 'banned';
@@ -24,6 +26,18 @@ type UserPermissionPayload = {
   signature?: PermissionPayload;
 };
 
+type HighRiskConfirmationPayload = {
+  confirmationId?: number | string | null;
+  confirmationCode?: string | null;
+};
+
+type HighRiskChallengePayload = {
+  actionKey?: string;
+  targetType?: string;
+  targetIds?: Array<number | string>;
+  summary?: string | null;
+};
+
 const ALL_ADMIN_PERMISSIONS = ADMIN_PERMISSION_OPTIONS.map((item) => item.key);
 const USER_PERMISSION_KEYS: PermissionKey[] = ['account', 'note', 'share', 'avatar', 'signature'];
 
@@ -33,6 +47,7 @@ export class AdminService {
     private readonly dataSource: DataSource,
     private readonly jwtService: JwtService,
     private readonly adminAuditService: AdminAuditService,
+    private readonly messageSender: MessageSenderService,
   ) {}
 
   private getAdminEmail() {
@@ -287,6 +302,366 @@ export class AdminService {
     params.push('banned', (payload.reason || '').trim() || null, bannedUntil);
   }
 
+  private async columnExists(tableName: string, columnName: string) {
+    const rows = await this.dataSource.query(`SHOW COLUMNS FROM \`${tableName}\` LIKE ?`, [columnName]);
+    return rows.length > 0;
+  }
+
+  private normalizeIdList(ids: unknown) {
+    if (!Array.isArray(ids)) {
+      return [];
+    }
+
+    const unique = new Set<number>();
+    ids.forEach((item) => {
+      const value = Number(item);
+      if (Number.isInteger(value) && value > 0) {
+        unique.add(value);
+      }
+    });
+
+    return Array.from(unique);
+  }
+
+  private buildChallengeTargetFingerprint(targetIds: Array<number | string>) {
+    return JSON.stringify(
+      targetIds
+        .map((item) => String(item))
+        .sort((left, right) => left.localeCompare(right)),
+    );
+  }
+
+  private buildHighRiskCode() {
+    return String(randomInt(100000, 999999));
+  }
+
+  private normalizeHighRiskPayload(payload: unknown): HighRiskConfirmationPayload {
+    return {
+      confirmationId: payload && typeof payload === 'object' ? (payload as any).confirmationId : null,
+      confirmationCode: payload && typeof payload === 'object' ? (payload as any).confirmationCode : null,
+    };
+  }
+
+  private requiresHighRiskForPermissions(payload: UserPermissionPayload) {
+    return USER_PERMISSION_KEYS.some((key) => payload?.[key]?.mode === 'banned');
+  }
+
+  private requiresHighRiskForShareStatus(status?: string) {
+    return status === 'blocked';
+  }
+
+  private requiresHighRiskForNoteModeration(status?: string) {
+    return status === 'blocked';
+  }
+
+  private requiresHighRiskForReport(payload: { status?: string; action?: string }) {
+    return payload?.status === 'resolved' && ['block_note', 'block_share'].includes(payload?.action || 'none');
+  }
+
+  private requiresHighRiskForAdminAccountUpdate(payload: {
+    role?: string;
+    status?: string;
+    permissions?: unknown;
+  }) {
+    return (
+      payload?.role !== undefined ||
+      payload?.status === 'disabled' ||
+      payload?.permissions !== undefined
+    );
+  }
+
+  private async getViolationStats(userId: number) {
+    const exists = await this.tableExists('user_violation_records').catch(() => false);
+    if (!exists) {
+      return {
+        total: 0,
+        active: 0,
+        lifted: 0,
+        lastCreatedAt: null,
+      };
+    }
+
+    const rows = await this.dataSource.query(
+      `SELECT
+          COUNT(*) AS total,
+          SUM(CASE WHEN record_status = 'active' THEN 1 ELSE 0 END) AS active_total,
+          SUM(CASE WHEN record_status = 'lifted' THEN 1 ELSE 0 END) AS lifted_total,
+          MAX(created_at) AS last_created_at
+       FROM user_violation_records
+       WHERE user_id = ?`,
+      [userId],
+    );
+
+    return {
+      total: Number(rows[0]?.total || 0),
+      active: Number(rows[0]?.active_total || 0),
+      lifted: Number(rows[0]?.lifted_total || 0),
+      lastCreatedAt: rows[0]?.last_created_at || null,
+    };
+  }
+
+  private async getViolationRecords(userId: number) {
+    const exists = await this.tableExists('user_violation_records').catch(() => false);
+    if (!exists) {
+      return [];
+    }
+
+    return this.dataSource.query(
+      `SELECT
+          id,
+          user_id,
+          violation_type,
+          source_type,
+          source_id,
+          action_type,
+          reason,
+          duration_days,
+          expires_at,
+          record_status,
+          related_report_id,
+          related_appeal_id,
+          operator_email,
+          metadata_json,
+          created_at
+       FROM user_violation_records
+       WHERE user_id = ?
+       ORDER BY created_at DESC, id DESC
+       LIMIT 20`,
+      [userId],
+    );
+  }
+
+  private async recordViolation(payload: {
+    userId?: number | null;
+    violationType: PermissionKey | 'report';
+    sourceType: string;
+    sourceId?: number | string | null;
+    actionType: string;
+    reason?: string | null;
+    durationDays?: number | null;
+    expiresAt?: string | Date | null;
+    recordStatus?: 'active' | 'lifted';
+    relatedReportId?: number | null;
+    relatedAppealId?: number | null;
+    operator?: any;
+    metadata?: any;
+  }) {
+    if (!payload.userId) {
+      return;
+    }
+
+    const exists = await this.tableExists('user_violation_records').catch(() => false);
+    if (!exists) {
+      return;
+    }
+
+    const expiresAt =
+      payload.expiresAt instanceof Date
+        ? payload.expiresAt.toISOString().slice(0, 19).replace('T', ' ')
+        : payload.expiresAt || null;
+
+    await this.dataSource.query(
+      `INSERT INTO user_violation_records
+        (user_id, violation_type, source_type, source_id, action_type, reason, duration_days, expires_at, record_status, related_report_id, related_appeal_id, operator_email, metadata_json, _openid)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '')`,
+      [
+        payload.userId,
+        payload.violationType,
+        payload.sourceType,
+        payload.sourceId == null ? null : String(payload.sourceId),
+        payload.actionType,
+        payload.reason || null,
+        payload.durationDays == null ? null : Number(payload.durationDays),
+        expiresAt,
+        payload.recordStatus || 'active',
+        payload.relatedReportId || null,
+        payload.relatedAppealId || null,
+        payload.operator?.email || null,
+        payload.metadata ? JSON.stringify(payload.metadata) : null,
+      ],
+    );
+  }
+
+  private async consumeHighRiskConfirmation(options: {
+    required: boolean;
+    admin: any;
+    actionKey: string;
+    targetType: string;
+    targetIds: Array<number | string>;
+    payload?: HighRiskConfirmationPayload;
+  }) {
+    if (!options.required) {
+      return;
+    }
+
+    await this.ensureTableExists(
+      'admin_action_confirmations',
+      'admin_action_confirmations table is not ready yet',
+    );
+
+    const confirmationId = Number(options.payload?.confirmationId || 0);
+    const confirmationCode = String(options.payload?.confirmationCode || '').trim();
+
+    if (!confirmationId || !confirmationCode) {
+      throw new BadRequestException('High-risk confirmation required');
+    }
+
+    const rows = await this.dataSource.query(
+      `SELECT id, admin_email, action_key, target_type, target_ids_json, confirmation_code, expires_at, used_at
+         FROM admin_action_confirmations
+        WHERE id = ?
+        LIMIT 1`,
+      [confirmationId],
+    );
+
+    if (!rows.length) {
+      throw new BadRequestException('High-risk confirmation not found');
+    }
+
+    const challenge = rows[0];
+    const expiresAt = challenge.expires_at ? new Date(challenge.expires_at).getTime() : 0;
+
+    if (challenge.used_at) {
+      throw new BadRequestException('High-risk confirmation already used');
+    }
+
+    if (!expiresAt || Number.isNaN(expiresAt) || expiresAt <= Date.now()) {
+      throw new BadRequestException('High-risk confirmation expired');
+    }
+
+    if (String(challenge.admin_email || '').trim().toLowerCase() !== String(options.admin?.email || '').trim().toLowerCase()) {
+      throw new BadRequestException('High-risk confirmation does not belong to current admin');
+    }
+
+    if (challenge.action_key !== options.actionKey || challenge.target_type !== options.targetType) {
+      throw new BadRequestException('High-risk confirmation does not match this action');
+    }
+
+    if (
+      String(challenge.target_ids_json || '') !==
+      this.buildChallengeTargetFingerprint(options.targetIds)
+    ) {
+      throw new BadRequestException('High-risk confirmation target mismatch');
+    }
+
+    if (String(challenge.confirmation_code || '').trim() !== confirmationCode) {
+      throw new BadRequestException('High-risk confirmation code mismatch');
+    }
+
+    await this.dataSource.query(
+      `UPDATE admin_action_confirmations
+          SET used_at = CURRENT_TIMESTAMP
+        WHERE id = ?`,
+      [confirmationId],
+    );
+  }
+
+  async createHighRiskChallenge(payload: HighRiskChallengePayload, admin?: any) {
+    await this.ensureTableExists(
+      'admin_action_confirmations',
+      'admin_action_confirmations table is not ready yet',
+    );
+
+    const actionKey = String(payload?.actionKey || '').trim();
+    const targetType = String(payload?.targetType || '').trim();
+    const targetIds = this.normalizeIdList(payload?.targetIds);
+
+    if (!actionKey || !targetType || !targetIds.length) {
+      throw new BadRequestException('actionKey, targetType and targetIds are required');
+    }
+
+    const confirmationCode = this.buildHighRiskCode();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000)
+      .toISOString()
+      .slice(0, 19)
+      .replace('T', ' ');
+
+    const result = await this.dataSource.query(
+      `INSERT INTO admin_action_confirmations
+        (admin_id, admin_email, action_key, target_type, target_ids_json, summary, confirmation_code, expires_at, _openid)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, '')`,
+      [
+        Number(admin?.adminId || 0) || null,
+        admin?.email || null,
+        actionKey,
+        targetType,
+        this.buildChallengeTargetFingerprint(targetIds),
+        (payload?.summary || '').trim() || null,
+        confirmationCode,
+        expiresAt,
+      ],
+    );
+
+    await this.adminAuditService.log({
+      ...this.buildAdminSummary(admin),
+      action: 'admin.high_risk.challenge',
+      targetType,
+      targetId: targetIds.join(','),
+      summary: `High-risk confirmation challenge created: ${actionKey}`,
+      detail: { actionKey, targetType, targetIds },
+    });
+
+    return {
+      confirmationId: Number(result?.insertId || 0),
+      confirmationCode,
+      expiresAt,
+    };
+  }
+
+  async getReminderLogSummary() {
+    const exists = await this.tableExists('reminder_send_logs').catch(() => false);
+    if (!exists) {
+      return {
+        sentCount: 0,
+        failedCount: 0,
+        failedLast24h: 0,
+        retriedCount: 0,
+        criticalCount: 0,
+        latestAlerts: [],
+      };
+    }
+
+    const hasRetryCount = await this.columnExists('reminder_send_logs', 'retry_count').catch(() => false);
+    const counts = await this.dataSource.query(
+      `SELECT
+          SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) AS sent_total,
+          SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed_total,
+          SUM(CASE WHEN status = 'failed' AND created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 1 ELSE 0 END) AS failed_last_24h,
+          SUM(CASE WHEN status = 'failed' ${hasRetryCount ? 'AND retry_count > 0' : 'AND 1 = 0'} THEN 1 ELSE 0 END) AS retried_total,
+          SUM(CASE WHEN status = 'failed' ${hasRetryCount ? 'AND retry_count >= 2' : 'AND 1 = 0'} THEN 1 ELSE 0 END) AS critical_total
+       FROM reminder_send_logs`,
+    );
+
+    const latestAlerts = await this.dataSource.query(
+      `SELECT
+          l.id,
+          l.status,
+          l.course_name,
+          l.start_time,
+          l.location,
+          l.error_message,
+          ${hasRetryCount ? 'l.retry_count' : '0 AS retry_count'},
+          ${hasRetryCount ? 'l.last_retry_at' : 'NULL AS last_retry_at'},
+          u.nickname,
+          u.openid,
+          l.created_at
+       FROM reminder_send_logs l
+       LEFT JOIN users u ON u.id = l.user_id
+       WHERE l.status = 'failed'
+       ORDER BY ${hasRetryCount ? 'l.retry_count DESC,' : ''} l.created_at DESC, l.id DESC
+       LIMIT 8`,
+    );
+
+    return {
+      sentCount: Number(counts[0]?.sent_total || 0),
+      failedCount: Number(counts[0]?.failed_total || 0),
+      failedLast24h: Number(counts[0]?.failed_last_24h || 0),
+      retriedCount: Number(counts[0]?.retried_total || 0),
+      criticalCount: Number(counts[0]?.critical_total || 0),
+      latestAlerts,
+    };
+  }
+
   async login(payload: { email?: string; password?: string; request?: any }) {
     const email = String(payload?.email || '').trim().toLowerCase();
     const password = String(payload?.password || '');
@@ -405,6 +780,7 @@ export class AdminService {
   async getOverview() {
     const feedbackTableExists = await this.tableExists('user_feedback');
     const appealTableExists = await this.tableExists('user_appeals');
+    const violationTableExists = await this.tableExists('user_violation_records').catch(() => false);
     const [
       users,
       courses,
@@ -422,6 +798,8 @@ export class AdminService {
       pendingReports,
       pendingAppeals,
       pendingFeedback,
+      totalViolations,
+      activeViolations,
     ] =
       await Promise.all([
         this.dataSource.query('SELECT COUNT(*) AS total FROM users'),
@@ -450,9 +828,15 @@ export class AdminService {
         feedbackTableExists
           ? this.dataSource.query("SELECT COUNT(*) AS total FROM user_feedback WHERE status = 'pending'")
           : Promise.resolve([{ total: 0 }]),
+        violationTableExists
+          ? this.dataSource.query('SELECT COUNT(*) AS total FROM user_violation_records')
+          : Promise.resolve([{ total: 0 }]),
+        violationTableExists
+          ? this.dataSource.query("SELECT COUNT(*) AS total FROM user_violation_records WHERE record_status = 'active'")
+          : Promise.resolve([{ total: 0 }]),
       ]);
 
-    const [recentUsers, recentNotes, recentCourses] = await Promise.all([
+    const [recentUsers, recentNotes, recentCourses, reminderSummary] = await Promise.all([
       this.dataSource.query(
         `SELECT id, nickname, school, major, grade, created_at
            FROM users
@@ -473,6 +857,7 @@ export class AdminService {
           ORDER BY c.id DESC
           LIMIT 6`,
       ),
+      this.getReminderLogSummary(),
     ]);
 
     return {
@@ -493,10 +878,15 @@ export class AdminService {
         pendingReports: Number(pendingReports[0]?.total || 0),
         pendingAppeals: Number(pendingAppeals[0]?.total || 0),
         pendingFeedback: Number(pendingFeedback[0]?.total || 0),
+        totalViolations: Number(totalViolations[0]?.total || 0),
+        activeViolations: Number(activeViolations[0]?.total || 0),
+        failedReminders24h: Number(reminderSummary.failedLast24h || 0),
+        criticalReminderAlerts: Number(reminderSummary.criticalCount || 0),
       },
       recentUsers,
       recentNotes,
       recentCourses,
+      reminderSummary,
       featureHealth: {
         remindersTable: await this.tableExists('reminders'),
         importTasksTable: await this.tableExists('import_tasks'),
@@ -504,6 +894,7 @@ export class AdminService {
         announcementTable: await this.tableExists('announcements'),
         appealTable: appealTableExists,
         feedbackTable: feedbackTableExists,
+        violationTable: violationTableExists,
       },
     };
   }
@@ -623,7 +1014,7 @@ export class AdminService {
   }
 
   async getUserDetail(id: number) {
-    const [users, courses, notes, shareKeys, subscriptions] = await Promise.all([
+    const [users, courses, notes, shareKeys, subscriptions, violationStats, violationRecords] = await Promise.all([
       this.dataSource.query(
         `SELECT
             u.*,
@@ -675,6 +1066,8 @@ export class AdminService {
          ORDER BY updated_at DESC, id DESC`,
         [id],
       ),
+      this.getViolationStats(id),
+      this.getViolationRecords(id),
     ]);
 
     if (!users.length) {
@@ -687,14 +1080,25 @@ export class AdminService {
       notes,
       shareKeys,
       subscriptions,
+      violationStats,
+      violationRecords,
     };
   }
 
-  async updateUserPermissions(id: number, payload: UserPermissionPayload, admin?: any) {
-    const rows = await this.dataSource.query('SELECT id FROM users WHERE id = ? LIMIT 1', [id]);
+  async updateUserPermissions(id: number, payload: UserPermissionPayload & HighRiskConfirmationPayload, admin?: any) {
+    const rows = await this.dataSource.query('SELECT * FROM users WHERE id = ? LIMIT 1', [id]);
     if (!rows.length) {
       throw new NotFoundException('User not found');
     }
+
+    await this.consumeHighRiskConfirmation({
+      required: !(payload as any)?.__skipHighRiskConfirmation && this.requiresHighRiskForPermissions(payload),
+      admin,
+      actionKey: 'user.permissions.update',
+      targetType: 'user',
+      targetIds: [id],
+      payload: this.normalizeHighRiskPayload(payload),
+    });
 
     const sets: string[] = [];
     const params: QueryValue[] = [];
@@ -726,7 +1130,90 @@ export class AdminService {
       detail: payload,
     });
 
-    return this.getUserDetail(id);
+    const detail = await this.getUserDetail(id);
+
+    for (const key of USER_PERMISSION_KEYS) {
+      const item = payload?.[key];
+      if (!item?.mode) {
+        continue;
+      }
+
+      await this.recordViolation({
+        userId: id,
+        violationType: key,
+        sourceType: 'user_permission',
+        sourceId: id,
+        actionType: item.mode === 'banned' ? 'ban' : 'lift',
+        reason:
+          item.mode === 'banned'
+            ? (item.reason || '').trim() || null
+            : rows[0]?.[`${key}_ban_reason`] || (item.reason || '').trim() || null,
+        durationDays: item.mode === 'banned' ? item.durationDays ?? null : null,
+        expiresAt:
+          item.mode === 'banned'
+            ? detail?.user?.permissions?.[key]?.bannedUntil || null
+            : null,
+        recordStatus: item.mode === 'banned' ? 'active' : 'lifted',
+        operator: admin,
+        metadata: {
+          currentStatus: detail?.user?.permissions?.[key]?.status || null,
+        },
+      });
+    }
+
+    return detail;
+  }
+
+  async batchUpdateUserPermissions(
+    payload: {
+      ids?: Array<number | string>;
+      permissions?: UserPermissionPayload;
+    } & HighRiskConfirmationPayload,
+    admin?: any,
+  ) {
+    const ids = this.normalizeIdList(payload?.ids);
+    if (!ids.length) {
+      throw new BadRequestException('No users selected');
+    }
+
+    if (!payload?.permissions) {
+      throw new BadRequestException('permissions is required');
+    }
+
+    await this.consumeHighRiskConfirmation({
+      required: this.requiresHighRiskForPermissions(payload.permissions),
+      admin,
+      actionKey: 'user.permissions.batch',
+      targetType: 'user',
+      targetIds: ids,
+      payload: this.normalizeHighRiskPayload(payload),
+    });
+
+    const items = [];
+    for (const id of ids) {
+      items.push(
+        await this.updateUserPermissions(
+          id,
+          { ...(payload.permissions as any), __skipHighRiskConfirmation: true } as any,
+          admin,
+        ),
+      );
+    }
+
+    await this.adminAuditService.log({
+      ...this.buildAdminSummary(admin),
+      action: 'user.permissions.batch',
+      targetType: 'user',
+      targetId: ids.join(','),
+      summary: `Batch update user permissions (${ids.length})`,
+      detail: { ids, permissions: payload.permissions },
+    });
+
+    return {
+      success: true,
+      total: items.length,
+      items,
+    };
   }
 
   async getCourses(keyword?: string, weekday?: number) {
@@ -860,10 +1347,23 @@ export class AdminService {
     );
   }
 
-  async updateShareKeyStatus(id: number, payload: { status?: 'active' | 'blocked'; reason?: string }, admin?: any) {
+  async updateShareKeyStatus(
+    id: number,
+    payload: { status?: 'active' | 'blocked'; reason?: string } & HighRiskConfirmationPayload,
+    admin?: any,
+  ) {
     if (payload?.status !== 'active' && payload?.status !== 'blocked') {
       throw new BadRequestException('Invalid share key status');
     }
+
+    await this.consumeHighRiskConfirmation({
+      required: !(payload as any)?.__skipHighRiskConfirmation && this.requiresHighRiskForShareStatus(payload?.status),
+      admin,
+      actionKey: 'share_key.status.update',
+      targetType: 'share_key',
+      targetIds: [id],
+      payload: this.normalizeHighRiskPayload(payload),
+    });
 
     await this.dataSource.query(
       `UPDATE schedule_share_keys
@@ -914,7 +1414,61 @@ export class AdminService {
       detail: payload,
     });
 
+    await this.recordViolation({
+      userId: Number(rows[0]?.user_id || 0) || null,
+      violationType: 'share',
+      sourceType: 'schedule_share_key',
+      sourceId: id,
+      actionType: payload.status === 'blocked' ? 'block_share_key' : 'restore_share_key',
+      reason: payload.status === 'blocked' ? (payload.reason || '').trim() || null : rows[0]?.ban_reason || null,
+      recordStatus: payload.status === 'blocked' ? 'active' : 'lifted',
+      operator: admin,
+    });
+
     return rows[0];
+  }
+
+  async batchUpdateShareKeyStatus(
+    payload: {
+      ids?: Array<number | string>;
+      status?: 'active' | 'blocked';
+      reason?: string;
+    } & HighRiskConfirmationPayload,
+    admin?: any,
+  ) {
+    const ids = this.normalizeIdList(payload?.ids);
+    if (!ids.length) {
+      throw new BadRequestException('No share keys selected');
+    }
+
+    await this.consumeHighRiskConfirmation({
+      required: this.requiresHighRiskForShareStatus(payload?.status),
+      admin,
+      actionKey: 'share_key.status.batch',
+      targetType: 'share_key',
+      targetIds: ids,
+      payload: this.normalizeHighRiskPayload(payload),
+    });
+
+    const items = [];
+    for (const id of ids) {
+      items.push(await this.updateShareKeyStatus(id, { ...(payload as any), __skipHighRiskConfirmation: true }, admin));
+    }
+
+    await this.adminAuditService.log({
+      ...this.buildAdminSummary(admin),
+      action: 'share_key.status.batch',
+      targetType: 'share_key',
+      targetId: ids.join(','),
+      summary: `Batch update share keys (${ids.length}) -> ${payload.status}`,
+      detail: { ids, status: payload.status, reason: payload.reason || null },
+    });
+
+    return {
+      success: true,
+      total: items.length,
+      items,
+    };
   }
 
   async getSubscriptions() {
@@ -972,10 +1526,23 @@ export class AdminService {
     );
   }
 
-  async moderateNote(id: number, payload: { status?: 'visible' | 'blocked'; reason?: string }, admin?: any) {
+  async moderateNote(
+    id: number,
+    payload: { status?: 'visible' | 'blocked'; reason?: string } & HighRiskConfirmationPayload,
+    admin?: any,
+  ) {
     if (payload?.status !== 'visible' && payload?.status !== 'blocked') {
       throw new BadRequestException('Invalid note moderation status');
     }
+
+    await this.consumeHighRiskConfirmation({
+      required: !(payload as any)?.__skipHighRiskConfirmation && this.requiresHighRiskForNoteModeration(payload?.status),
+      admin,
+      actionKey: 'note.moderate',
+      targetType: 'note',
+      targetIds: [id],
+      payload: this.normalizeHighRiskPayload(payload),
+    });
 
     await this.dataSource.query(
       `UPDATE notes
@@ -1024,7 +1591,64 @@ export class AdminService {
       detail: payload,
     });
 
+    await this.recordViolation({
+      userId: Number(rows[0]?.user_id || 0) || null,
+      violationType: 'note',
+      sourceType: 'note',
+      sourceId: id,
+      actionType: payload.status === 'blocked' ? 'block_note' : 'restore_note',
+      reason:
+        payload.status === 'blocked'
+          ? (payload.reason || '').trim() || null
+          : rows[0]?.moderation_reason || null,
+      recordStatus: payload.status === 'blocked' ? 'active' : 'lifted',
+      operator: admin,
+    });
+
     return rows[0];
+  }
+
+  async batchModerateNotes(
+    payload: {
+      ids?: Array<number | string>;
+      status?: 'visible' | 'blocked';
+      reason?: string;
+    } & HighRiskConfirmationPayload,
+    admin?: any,
+  ) {
+    const ids = this.normalizeIdList(payload?.ids);
+    if (!ids.length) {
+      throw new BadRequestException('No notes selected');
+    }
+
+    await this.consumeHighRiskConfirmation({
+      required: this.requiresHighRiskForNoteModeration(payload?.status),
+      admin,
+      actionKey: 'note.moderate.batch',
+      targetType: 'note',
+      targetIds: ids,
+      payload: this.normalizeHighRiskPayload(payload),
+    });
+
+    const items = [];
+    for (const id of ids) {
+      items.push(await this.moderateNote(id, { ...(payload as any), __skipHighRiskConfirmation: true }, admin));
+    }
+
+    await this.adminAuditService.log({
+      ...this.buildAdminSummary(admin),
+      action: 'note.moderate.batch',
+      targetType: 'note',
+      targetId: ids.join(','),
+      summary: `Batch moderate notes (${ids.length}) -> ${payload.status}`,
+      detail: { ids, status: payload.status, reason: payload.reason || null },
+    });
+
+    return {
+      success: true,
+      total: items.length,
+      items,
+    };
   }
 
   async getNoteShares(keyword?: string) {
@@ -1072,10 +1696,23 @@ export class AdminService {
     );
   }
 
-  async updateNoteShareStatus(id: number, payload: { status?: 'active' | 'blocked'; reason?: string }, admin?: any) {
+  async updateNoteShareStatus(
+    id: number,
+    payload: { status?: 'active' | 'blocked'; reason?: string } & HighRiskConfirmationPayload,
+    admin?: any,
+  ) {
     if (payload?.status !== 'active' && payload?.status !== 'blocked') {
       throw new BadRequestException('Invalid note share status');
     }
+
+    await this.consumeHighRiskConfirmation({
+      required: !(payload as any)?.__skipHighRiskConfirmation && this.requiresHighRiskForShareStatus(payload?.status),
+      admin,
+      actionKey: 'note_share.status.update',
+      targetType: 'note_share',
+      targetIds: [id],
+      payload: this.normalizeHighRiskPayload(payload),
+    });
 
     await this.dataSource.query(
       `UPDATE note_shares
@@ -1128,7 +1765,63 @@ export class AdminService {
       detail: payload,
     });
 
+    await this.recordViolation({
+      userId: Number(rows[0]?.user_id || 0) || null,
+      violationType: 'share',
+      sourceType: 'note_share',
+      sourceId: id,
+      actionType: payload.status === 'blocked' ? 'block_note_share' : 'restore_note_share',
+      reason: payload.status === 'blocked' ? (payload.reason || '').trim() || null : rows[0]?.ban_reason || null,
+      recordStatus: payload.status === 'blocked' ? 'active' : 'lifted',
+      operator: admin,
+    });
+
     return rows[0];
+  }
+
+  async batchUpdateNoteShareStatus(
+    payload: {
+      ids?: Array<number | string>;
+      status?: 'active' | 'blocked';
+      reason?: string;
+    } & HighRiskConfirmationPayload,
+    admin?: any,
+  ) {
+    const ids = this.normalizeIdList(payload?.ids);
+    if (!ids.length) {
+      throw new BadRequestException('No note shares selected');
+    }
+
+    await this.consumeHighRiskConfirmation({
+      required: this.requiresHighRiskForShareStatus(payload?.status),
+      admin,
+      actionKey: 'note_share.status.batch',
+      targetType: 'note_share',
+      targetIds: ids,
+      payload: this.normalizeHighRiskPayload(payload),
+    });
+
+    const items = [];
+    for (const id of ids) {
+      items.push(
+        await this.updateNoteShareStatus(id, { ...(payload as any), __skipHighRiskConfirmation: true }, admin),
+      );
+    }
+
+    await this.adminAuditService.log({
+      ...this.buildAdminSummary(admin),
+      action: 'note_share.status.batch',
+      targetType: 'note_share',
+      targetId: ids.join(','),
+      summary: `Batch update note share status (${ids.length}) -> ${payload.status}`,
+      detail: { ids, status: payload.status, reason: payload.reason || null },
+    });
+
+    return {
+      success: true,
+      total: items.length,
+      items,
+    };
   }
 
   async getReports(keyword?: string, status?: string) {
@@ -1203,7 +1896,11 @@ export class AdminService {
 
   async reviewReport(
     id: number,
-    payload: { status?: 'resolved' | 'rejected'; action?: 'none' | 'block_note' | 'block_share'; reviewNote?: string },
+    payload: {
+      status?: 'resolved' | 'rejected';
+      action?: 'none' | 'block_note' | 'block_share';
+      reviewNote?: string;
+    } & HighRiskConfirmationPayload,
     admin?: any,
   ) {
     if (payload?.status !== 'resolved' && payload?.status !== 'rejected') {
@@ -1214,6 +1911,15 @@ export class AdminService {
     if (!['none', 'block_note', 'block_share'].includes(action)) {
       throw new BadRequestException('Invalid report action');
     }
+
+    await this.consumeHighRiskConfirmation({
+      required: !(payload as any)?.__skipHighRiskConfirmation && this.requiresHighRiskForReport(payload),
+      admin,
+      actionKey: 'report.review',
+      targetType: 'content_report',
+      targetIds: [id],
+      payload: this.normalizeHighRiskPayload(payload),
+    });
 
     await this.dataSource.transaction(async (manager) => {
       const reports = await manager.query(
@@ -1294,7 +2000,69 @@ export class AdminService {
       detail: payload,
     });
 
+    if (payload.status === 'resolved' && action !== 'none') {
+      await this.recordViolation({
+        userId: Number(target.reported_user_id || 0) || null,
+        violationType: action === 'block_note' ? 'note' : 'share',
+        sourceType: 'content_report',
+        sourceId: id,
+        actionType: action,
+        reason: (payload.reviewNote || '').trim() || target.reason || null,
+        recordStatus: 'active',
+        relatedReportId: id,
+        operator: admin,
+        metadata: {
+          targetType: target.target_type,
+          targetId: target.target_id,
+        },
+      });
+    }
+
     return target;
+  }
+
+  async batchReviewReports(
+    payload: {
+      ids?: Array<number | string>;
+      status?: 'resolved' | 'rejected';
+      action?: 'none' | 'block_note' | 'block_share';
+      reviewNote?: string;
+    } & HighRiskConfirmationPayload,
+    admin?: any,
+  ) {
+    const ids = this.normalizeIdList(payload?.ids);
+    if (!ids.length) {
+      throw new BadRequestException('No reports selected');
+    }
+
+    await this.consumeHighRiskConfirmation({
+      required: this.requiresHighRiskForReport(payload),
+      admin,
+      actionKey: 'report.review.batch',
+      targetType: 'content_report',
+      targetIds: ids,
+      payload: this.normalizeHighRiskPayload(payload),
+    });
+
+    const items = [];
+    for (const id of ids) {
+      items.push(await this.reviewReport(id, { ...(payload as any), __skipHighRiskConfirmation: true }, admin));
+    }
+
+    await this.adminAuditService.log({
+      ...this.buildAdminSummary(admin),
+      action: 'report.review.batch',
+      targetType: 'content_report',
+      targetId: ids.join(','),
+      summary: `Batch review reports (${ids.length}) -> ${payload.status}/${payload.action || 'none'}`,
+      detail: { ids, status: payload.status, action: payload.action || 'none', reviewNote: payload.reviewNote || null },
+    });
+
+    return {
+      success: true,
+      total: items.length,
+      items,
+    };
   }
 
   async getAppeals(keyword?: string, status?: string, appealType?: string) {
@@ -1477,6 +2245,20 @@ export class AdminService {
       detail: payload,
     });
 
+    if (payload.status === 'approved') {
+      await this.recordViolation({
+        userId: Number(rows[0]?.user_id || 0) || null,
+        violationType: (rows[0]?.appeal_type || 'account') as PermissionKey,
+        sourceType: 'user_appeal',
+        sourceId: id,
+        actionType: 'appeal_relief',
+        reason: rows[0]?.admin_note || rows[0]?.restriction_reason || null,
+        recordStatus: 'lifted',
+        relatedAppealId: id,
+        operator: admin,
+      });
+    }
+
     return rows[0];
   }
 
@@ -1608,6 +2390,8 @@ export class AdminService {
       return [];
     }
 
+    const hasRetryCount = await this.columnExists('reminder_send_logs', 'retry_count').catch(() => false);
+
     const params: QueryValue[] = [];
     const clauses: string[] = [];
 
@@ -1649,6 +2433,9 @@ export class AdminService {
           l.response_json,
           l.sent_at,
           l.created_at,
+          ${hasRetryCount ? 'l.retry_count,' : '0 AS retry_count,'}
+          ${hasRetryCount ? 'l.retried_from_log_id,' : 'NULL AS retried_from_log_id,'}
+          ${hasRetryCount ? 'l.last_retry_at,' : 'NULL AS last_retry_at,'}
           u.nickname,
           u.openid,
           u.school
@@ -1658,6 +2445,151 @@ export class AdminService {
        ORDER BY l.created_at DESC, l.id DESC`,
       params,
     );
+  }
+
+  async retryReminderLogs(payload: { ids?: Array<number | string> }, admin?: any) {
+    const ids = this.normalizeIdList(payload?.ids);
+    if (!ids.length) {
+      throw new BadRequestException('No reminder logs selected');
+    }
+
+    await this.ensureTableExists('reminder_send_logs', 'reminder_send_logs table is not ready yet');
+
+    const hasRetryCount = await this.columnExists('reminder_send_logs', 'retry_count').catch(() => false);
+    const logs = await this.dataSource.query(
+      `SELECT
+          l.*,
+          u.openid,
+          u.nickname
+       FROM reminder_send_logs l
+       LEFT JOIN users u ON u.id = l.user_id
+       WHERE l.id IN (${ids.map(() => '?').join(',')})
+         AND l.status = 'failed'
+       ORDER BY l.id ASC`,
+      ids,
+    );
+
+    if (!logs.length) {
+      throw new BadRequestException('No failed reminder logs found');
+    }
+
+    const items = [];
+
+    for (const log of logs) {
+      if (!log.openid) {
+        items.push({
+          id: Number(log.id),
+          status: 'failed',
+          message: 'Missing user openid',
+        });
+        continue;
+      }
+
+      const nextRetryCount = Number(log.retry_count || 0) + 1;
+      const retryAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+      try {
+        const response = await this.messageSender.sendReminder(log.openid, {
+          courseName: log.course_name || 'Course reminder',
+          startTime: log.start_time || '08:30',
+          location: log.location || 'TBD',
+          remark: log.remark || 'Manual retry from admin console',
+          page: log.page_path || 'pages/index/index',
+        });
+
+        if (hasRetryCount) {
+          await this.dataSource.query(
+            `UPDATE reminder_send_logs
+                SET retry_count = ?, last_retry_at = ?
+              WHERE id = ?`,
+            [nextRetryCount, retryAt, log.id],
+          );
+        }
+
+        await this.dataSource.query(
+          `INSERT INTO reminder_send_logs
+            (reminder_id, user_id, course_id, status, template_id, page_path, course_name, start_time, location, remark, error_message, response_json, sent_at, created_at${
+              hasRetryCount ? ', retry_count, retried_from_log_id, last_retry_at' : ''
+            }, _openid)
+           VALUES (?, ?, ?, 'sent', ?, ?, ?, ?, ?, ?, NULL, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP${
+             hasRetryCount ? ', ?, ?, ?' : ''
+           }, '')`,
+          [
+            log.reminder_id,
+            log.user_id,
+            log.course_id,
+            log.template_id || null,
+            log.page_path || null,
+            log.course_name || null,
+            log.start_time || null,
+            log.location || null,
+            log.remark || null,
+            response ? JSON.stringify(response) : null,
+            ...(hasRetryCount ? [nextRetryCount, log.id, retryAt] : []),
+          ],
+        );
+
+        items.push({
+          id: Number(log.id),
+          status: 'sent',
+          message: 'Reminder retried successfully',
+        });
+      } catch (error: any) {
+        if (hasRetryCount) {
+          await this.dataSource.query(
+            `UPDATE reminder_send_logs
+                SET retry_count = ?, last_retry_at = ?
+              WHERE id = ?`,
+            [nextRetryCount, retryAt, log.id],
+          );
+        }
+
+        await this.dataSource.query(
+          `INSERT INTO reminder_send_logs
+            (reminder_id, user_id, course_id, status, template_id, page_path, course_name, start_time, location, remark, error_message, response_json, sent_at, created_at${
+              hasRetryCount ? ', retry_count, retried_from_log_id, last_retry_at' : ''
+            }, _openid)
+           VALUES (?, ?, ?, 'failed', ?, ?, ?, ?, ?, ?, ?, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP${
+             hasRetryCount ? ', ?, ?, ?' : ''
+           }, '')`,
+          [
+            log.reminder_id,
+            log.user_id,
+            log.course_id,
+            log.template_id || null,
+            log.page_path || null,
+            log.course_name || null,
+            log.start_time || null,
+            log.location || null,
+            log.remark || null,
+            error?.message || 'Manual retry failed',
+            ...(hasRetryCount ? [nextRetryCount, log.id, retryAt] : []),
+          ],
+        );
+
+        items.push({
+          id: Number(log.id),
+          status: 'failed',
+          message: error?.message || 'Manual retry failed',
+        });
+      }
+    }
+
+    await this.adminAuditService.log({
+      ...this.buildAdminSummary(admin),
+      action: 'reminder_log.retry',
+      targetType: 'reminder_send_log',
+      targetId: ids.join(','),
+      summary: `Retry reminder logs (${ids.length})`,
+      detail: { ids, items },
+    });
+
+    return {
+      success: true,
+      total: items.length,
+      items,
+      summary: await this.getReminderLogSummary(),
+    };
   }
 
   async getAuditLogs(keyword?: string, action?: string) {
@@ -1809,7 +2741,7 @@ export class AdminService {
       status?: 'active' | 'disabled';
       password?: string;
       permissions?: AdminPermission[];
-    },
+    } & HighRiskConfirmationPayload,
   ) {
     await this.ensureTableExists('admin_accounts', 'admin_accounts table is not ready yet');
 
@@ -1833,6 +2765,15 @@ export class AdminService {
     ) {
       throw new BadRequestException('不能修改自己账号的角色或停用自己');
     }
+
+    await this.consumeHighRiskConfirmation({
+      required: !(payload as any)?.__skipHighRiskConfirmation && this.requiresHighRiskForAdminAccountUpdate(payload),
+      admin,
+      actionKey: 'admin_account.update',
+      targetType: 'admin_account',
+      targetIds: [id],
+      payload: this.normalizeHighRiskPayload(payload),
+    });
 
     if (payload?.name !== undefined) {
       sets.push('name = ?');

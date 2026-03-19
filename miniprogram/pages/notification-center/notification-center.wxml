@@ -5,6 +5,14 @@
     <text class="hero-sub">{{subtitle}}</text>
   </view>
 
+  <view class="summary-card" wx:if="{{isLoggedIn}}">
+    <view>
+      <text class="summary-label">未读消息</text>
+      <text class="summary-value">{{unreadCount}}</text>
+    </view>
+    <view class="summary-action" wx:if="{{unreadCount}}" bindtap="onMarkAllRead">全部已读</view>
+  </view>
+
   <view class="panel-card">
     <text class="panel-title">页面说明</text>
     <text class="panel-copy">{{content}}</text>
@@ -20,28 +28,38 @@
     </view>
   </view>
 
-  <view class="panel-card" wx:if="{{feedbackUpdates.length}}">
-    <text class="panel-title">反馈处理通知</text>
-    <view class="tip-list">
-      <view class="tip-item" wx:for="{{feedbackUpdates}}" wx:key="id">
-        <text class="tip-index">回</text>
-        <view class="tip-content">
-          <text class="tip-text">{{item.title}} · {{item.status === 'reviewed' ? '已处理' : '已归档'}}</text>
-          <text class="tip-sub">{{item.admin_note || '后台已经处理了你的反馈，可回到留言反馈页面查看详情。'}}</text>
-        </view>
-      </view>
+  <view class="panel-card">
+    <view class="title-row">
+      <text class="panel-title">系统消息中心</text>
+      <text class="panel-subcopy">{{isLoggedIn ? '含公告、反馈回执、申诉回执' : '登录后可查看反馈与申诉回执'}}</text>
     </view>
-  </view>
 
-  <view class="panel-card" wx:if="{{appealUpdates.length}}">
-    <text class="panel-title">申诉审核通知</text>
-    <view class="tip-list">
-      <view class="tip-item" wx:for="{{appealUpdates}}" wx:key="id">
-        <text class="tip-index">诉</text>
-        <view class="tip-content">
-          <text class="tip-text">{{item.title}} · {{item.status === 'approved' ? '申诉通过' : '申诉驳回'}}</text>
-          <text class="tip-sub">{{item.admin_note || (item.status === 'approved' ? '后台已通过你的申诉，对应限制已解除。' : '后台已驳回你的申诉，可回到申诉中心查看详情。')}}</text>
+    <view class="empty-box" wx:if="{{!messageItems.length}}">
+      <text class="empty-title">当前还没有消息</text>
+      <text class="empty-sub">新公告、反馈回执和申诉结果会显示在这里。</text>
+    </view>
+
+    <view class="message-list" wx:else>
+      <view
+        class="message-item {{item.isRead ? 'is-read' : 'is-unread'}}"
+        wx:for="{{messageItems}}"
+        wx:key="message_key"
+        data-type="{{item.message_type}}"
+        data-id="{{item.message_id}}"
+        bindtap="onMessageTap"
+      >
+        <view class="message-top">
+          <view class="message-badge-row">
+            <text class="message-badge">{{item.badgeText}}</text>
+            <text class="message-status">{{item.statusText}}</text>
+          </view>
+          <view class="message-side">
+            <text wx:if="{{!item.isRead}}" class="message-dot"></text>
+            <text class="message-time">{{item.timeText}}</text>
+          </view>
         </view>
+        <text class="message-title">{{item.title}}</text>
+        <text class="message-detail">{{item.detailText}}</text>
       </view>
     </view>
   </view>

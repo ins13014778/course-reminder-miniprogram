@@ -3,8 +3,8 @@
     <section class="hero-panel">
       <div>
         <div class="section-kicker">Reports Moderation</div>
-        <h2>审核用户对分享笔记的举报，并可同步执行下架原笔记或封禁分享链接。</h2>
-        <p>举报通过后可以只封禁分享，也可以直接把原笔记一起下架，方便你按违规程度处理。</p>
+        <h2>批量处理举报、同步下架原笔记或封禁分享链接。</h2>
+        <p>这里集中管理用户举报。你可以单条查看证据，也可以批量通过或驳回，直接联动内容治理。</p>
       </div>
       <div class="hero-side">
         <strong>{{ pendingCount }}</strong>
@@ -16,7 +16,7 @@
       <div class="panel-header">
         <div>
           <div class="panel-title">举报列表</div>
-          <div class="panel-subtitle">支持按状态和关键词过滤，优先处理未审核内容。</div>
+          <div class="panel-subtitle">优先处理待审核举报，支持批量通过和批量驳回。</div>
         </div>
         <div class="panel-toolbar">
           <el-select v-model="status" placeholder="全部状态" clearable style="width: 180px" @change="loadData">
@@ -32,11 +32,17 @@
             @keyup.enter="loadData"
           />
           <el-button type="primary" @click="loadData">查询</el-button>
+          <el-button :disabled="!selectedIds.length" @click="runBatchReview('rejected', 'none')">批量驳回</el-button>
+          <el-button :disabled="!selectedIds.length" @click="runBatchReview('resolved', 'block_note')">批量下架笔记</el-button>
+          <el-button :disabled="!selectedIds.length" @click="runBatchReview('resolved', 'block_share')">批量封禁分享</el-button>
         </div>
       </div>
 
+      <div class="muted-text" style="margin-bottom: 12px">已选择 {{ selectedIds.length }} 条举报</div>
+
       <div class="editorial-table">
-        <el-table :data="rows" v-loading="loading">
+        <el-table :data="rows" v-loading="loading" @selection-change="onSelectionChange">
+          <el-table-column type="selection" width="52" />
           <el-table-column prop="id" label="ID" width="80" />
           <el-table-column label="举报人" min-width="160">
             <template #default="{ row }">
@@ -81,13 +87,7 @@
             <template #default="{ row }">
               <div class="toolbar-actions">
                 <el-button size="small" @click="previewRow(row)">查看</el-button>
-                <el-button
-                  v-if="row.status === 'pending'"
-                  type="primary"
-                  plain
-                  size="small"
-                  @click="reviewRow(row)"
-                >
+                <el-button v-if="row.status === 'pending'" type="primary" plain size="small" @click="reviewRow(row)">
                   审核
                 </el-button>
               </div>
@@ -120,7 +120,6 @@
             preview-teleported
             fit="cover"
           />
-          <div class="muted-text">点击图片可放大查看</div>
         </div>
         <div class="detail-item">
           <strong>当前状态</strong>
@@ -141,6 +140,10 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { reportApi } from '../api'
 import { formatDateTime, trimText } from '../utils/format'
 import { resolveCloudFileUrl } from '../utils/cloud'
+import { resolveHighRiskConfirmation } from '../utils/high-risk'
+
+type ReviewAction = 'none' | 'block_note' | 'block_share'
+type ReviewStatus = 'resolved' | 'rejected'
 
 const rows = ref<any[]>([])
 const loading = ref(true)
@@ -148,6 +151,7 @@ const keyword = ref('')
 const status = ref('')
 const previewVisible = ref(false)
 const selectedRow = ref<any | null>(null)
+const selectedIds = ref<number[]>([])
 
 const pendingCount = computed(() => rows.value.filter((item) => item.status === 'pending').length)
 
@@ -156,6 +160,10 @@ function normalizeRow(row: any) {
     ...row,
     previewImageUrl: resolveCloudFileUrl(row.note_image_url),
   }
+}
+
+function onSelectionChange(selection: any[]) {
+  selectedIds.value = selection.map((item) => Number(item.id))
 }
 
 async function loadData() {
@@ -194,10 +202,55 @@ function actionLabel(value: string) {
   return '无'
 }
 
+async function promptReviewNote(defaultValue = '') {
+  const noteResult = await ElMessageBox.prompt(
+    '可填写审核备注，用户申诉与运营复核都会看到。',
+    '审核备注',
+    {
+      confirmButtonText: '确认提交',
+      cancelButtonText: '取消',
+      inputPlaceholder: '例如：确认违规引流，已下架原笔记',
+      inputValue: defaultValue,
+    },
+  )
+
+  return String(noteResult.value || '').trim()
+}
+
+async function submitReview(ids: number[], finalStatus: ReviewStatus, action: ReviewAction, reviewNote: string) {
+  const requiresHighRisk = finalStatus === 'resolved' && action !== 'none'
+  const extraConfirmation = requiresHighRisk
+    ? await resolveHighRiskConfirmation({
+        actionKey: ids.length > 1 ? 'report.review.batch' : 'report.review',
+        targetType: 'content_report',
+        targetIds: ids,
+        summary: `${action} on reports`,
+      })
+    : {}
+
+  if (ids.length > 1) {
+    await reportApi.batchReview({
+      ids,
+      status: finalStatus,
+      action,
+      reviewNote,
+      ...extraConfirmation,
+    })
+    return
+  }
+
+  await reportApi.review(ids[0], {
+    status: finalStatus,
+    action,
+    reviewNote,
+    ...extraConfirmation,
+  })
+}
+
 async function reviewRow(row: any) {
   try {
-    const statusResult = await ElMessageBox.prompt(
-      '输入处理方式：pass 表示举报成立，reject 表示驳回。成立后可在下一步选择是否下架笔记或封禁分享。',
+    const decisionResult = await ElMessageBox.prompt(
+      '输入 pass 表示举报成立，输入 reject 表示驳回。',
       '审核举报',
       {
         confirmButtonText: '下一步',
@@ -206,19 +259,19 @@ async function reviewRow(row: any) {
       },
     )
 
-    const decision = String(statusResult.value || '').trim().toLowerCase()
+    const decision = String(decisionResult.value || '').trim().toLowerCase()
     if (!['pass', 'reject'].includes(decision)) {
       ElMessage.warning('请输入 pass 或 reject')
       return
     }
 
-    let finalStatus: 'resolved' | 'rejected' = decision === 'pass' ? 'resolved' : 'rejected'
-    let action: 'none' | 'block_note' | 'block_share' = 'none'
+    let finalStatus: ReviewStatus = decision === 'pass' ? 'resolved' : 'rejected'
+    let action: ReviewAction = 'none'
 
     if (finalStatus === 'resolved') {
       const actionResult = await ElMessageBox.prompt(
-        '输入处置动作：share 表示只封禁分享，note 表示下架原笔记，none 表示仅记录举报。',
-        '选择处置动作',
+        '输入 share 仅封禁分享，输入 note 下架原笔记，输入 none 仅记录举报。',
+        '处理动作',
         {
           confirmButtonText: '继续',
           cancelButtonText: '取消',
@@ -232,24 +285,26 @@ async function reviewRow(row: any) {
       else action = 'none'
     }
 
-    const noteResult = await ElMessageBox.prompt(
-      '可填写审核备注，用户或运营回溯时会展示。',
-      '审核备注',
-      {
-        confirmButtonText: '确认提交',
-        cancelButtonText: '取消',
-        inputPlaceholder: '例如：确认违规引流，已下架原笔记',
-        inputValue: row.reason,
-      },
-    )
-
-    await reportApi.review(row.id, {
-      status: finalStatus,
-      action,
-      reviewNote: noteResult.value,
-    })
+    const reviewNote = await promptReviewNote(row.reason || '')
+    await submitReview([row.id], finalStatus, action, reviewNote)
 
     ElMessage.success('举报已处理')
+    await loadData()
+  } catch (error: any) {
+    if (error === 'cancel') return
+  }
+}
+
+async function runBatchReview(finalStatus: ReviewStatus, action: ReviewAction) {
+  if (!selectedIds.value.length) {
+    ElMessage.warning('请先选择举报')
+    return
+  }
+
+  try {
+    const reviewNote = await promptReviewNote('')
+    await submitReview(selectedIds.value, finalStatus, action, reviewNote)
+    ElMessage.success('批量举报处理完成')
     await loadData()
   } catch (error: any) {
     if (error === 'cancel') return

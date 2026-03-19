@@ -1,16 +1,16 @@
 # 开发交接文档
 
-最后更新：`2026-03-19`
+最后更新：`2026-03-20`
 
-这份文档给后续开发者和 AI 使用，目标不是介绍项目，而是帮助接手者快速进入真实可开发状态。
+这份文档给后续开发者和 AI 使用。目标不是介绍项目，而是帮助接手者快速进入“可继续开发、可继续部署、可继续排障”的真实状态。
 
-## 1. 项目组成
+## 1. 仓库结构
 
 - `miniprogram/`：微信小程序
 - `backend/`：NestJS 后端
 - `admin/`：Vue 3 + Vite 管理后台
-- `database/`：开源数据库结构与历史 SQL
-- `docs/`：开发、部署、接口、测试文档
+- `database/`：开源数据库结构与迁移 SQL
+- `docs/`：开发、接口、部署、测试文档
 
 ## 2. CloudBase 真实环境
 
@@ -18,7 +18,7 @@
 - `alias`: `dawdawd15`
 - `region`: `ap-shanghai`
 
-涉及 CloudBase 前，优先执行：
+开始处理 CloudBase 前，先执行：
 
 ```bash
 npx mcporter describe cloudbase
@@ -27,11 +27,42 @@ npx mcporter call cloudbase.auth action=set_env envId=dawdawd15-8g023nsw8cb3f68a
 npx mcporter call cloudbase.envQuery action=info --output json
 ```
 
-## 3. 当前线上关键表
+## 3. 当前线上事实
 
-已核实线上存在以下表：
+### 3.1 线上结构以 CloudBase 为准
+
+不要只相信以下文件：
+
+- `backend/src/common/entities/*.entity.ts`
+- 旧版 `database/schema.sql`
+- 历史 README 或历史部署文档
+
+先查线上，再动代码：
+
+```bash
+npx mcporter call cloudbase.executeReadOnlySQL sql="SHOW TABLES" --output json
+npx mcporter call cloudbase.executeReadOnlySQL sql="DESCRIBE users" --output json
+npx mcporter call cloudbase.executeReadOnlySQL sql="DESCRIBE reminder_send_logs" --output json
+```
+
+### 3.2 `synchronize` 已关闭
+
+后端当前是：
+
+- `backend/src/app.module.ts` -> `synchronize: false`
+
+这意味着：
+
+- 改表不会自动同步到线上
+- 每次改表都要同步维护 `database/open-source-schema.sql`
+- 需要时要显式执行迁移 SQL
+
+## 4. 当前线上关键表
+
+已核实线上存在以下核心表：
 
 - `admin_accounts`
+- `admin_action_confirmations`
 - `admin_audit_logs`
 - `announcements`
 - `content_pages`
@@ -45,71 +76,114 @@ npx mcporter call cloudbase.envQuery action=info --output json
 - `schedule_share_keys`
 - `user_appeals`
 - `user_feedback`
+- `user_message_reads`
 - `user_subscriptions`
+- `user_violation_records`
 - `users`
 
-## 4. 当前已落地的关键能力
+## 5. 本轮已落地能力
 
-### 4.1 小程序
+### 5.1 用户治理与后台批量操作
 
-- 微信登录
-- 课表查看、编辑、导入、冲突检测
-- 笔记发布与分享
-- 举报提交
-- 留言反馈
-- 公告读取
-- 内容页读取
-- 通知中心
-- 申诉中心
+这一轮已经补齐以下能力：
 
-### 4.2 后端
+- 用户批量封禁 / 解封
+- 分享密钥批量封禁 / 恢复
+- 笔记批量下架 / 恢复
+- 笔记分享批量封禁 / 恢复
+- 举报批量处理
 
-- 管理员登录与权限同步
-- 用户权限封禁控制
-- 课表查询与删除
-- 笔记审核
-- 举报审核
-- 留言反馈审核
-- 公告管理
-- 内容页管理
-- 管理员账号与权限管理
-- 用户申诉审核
+对应后端接口：
 
-### 4.3 管理后台
+- `POST /admin/users/batch-permissions`
+- `PATCH /admin/share-keys/batch-status`
+- `PATCH /admin/notes/batch-moderation`
+- `PATCH /admin/note-shares/batch-status`
+- `PATCH /admin/reports/batch-review`
 
-- 总览
-- 用户管理
-- 课表巡检
-- 模板课表
-- 分享密钥管理
-- 订阅提醒
-- 提醒日志
-- 笔记审核
-- 笔记分享
-- 内容举报
-- 用户申诉
-- 留言反馈
-- 公告运营
-- 页面配置
-- 审计日志
-- 管理员账号与权限分配
+### 5.2 高风险二次确认
 
-## 5. 当前申诉系统状态
+高风险操作新增二次确认挑战机制：
 
-`2026-03-19` 已完成：
+- `POST /admin/high-risk-actions/challenge`
 
-- 小程序新增 [appeals.js](/E:/codebese1/miniprogram/pages/appeals/appeals.js)
-- 小程序个人中心已接入“申诉中心”入口
-- 小程序通知中心已展示申诉审核结果
-- 后台新增 `/admin/appeals`
-- 后台新增 `PATCH /admin/appeals/:id/review`
-- 后台权限新增：
-  - `appeal.view`
-  - `appeal.review`
-- CloudBase 线上已创建 `user_appeals` 表
-- 开源 SQL 已同步 `user_appeals`
+说明：
 
-## 6. 本地启动方式
+- 后台会先创建短时效确认记录到 `admin_action_confirmations`
+- 前端要求管理员输入验证码
+- 高风险接口需要携带 `confirmationId` 和 `confirmationCode`
+
+### 5.3 违规档案
+
+后台已接入用户违规档案：
+
+- 新表：`user_violation_records`
+- 用户详情中可返回：
+  - `violationStats`
+  - `violationRecords`
+
+适用场景：
+
+- 账号封禁
+- 笔记权限封禁
+- 分享权限封禁
+- 头像封禁
+- 个签封禁
+- 举报联动治理
+
+### 5.4 通知中心合流
+
+小程序通知中心已改为统一消息中心，合并展示：
+
+- 公告
+- 反馈处理结果
+- 申诉处理结果
+
+新增表：
+
+- `user_message_reads`
+
+已上线的关键点：
+
+- 首页公告卡片可进入通知中心
+- 消息支持已读 / 未读
+- 账号封禁状态下，仍允许读取公告、反馈、申诉相关内容用于申诉和查看回执
+
+### 5.5 提醒重试与告警汇总
+
+提醒日志新增：
+
+- `retry_count`
+- `retried_from_log_id`
+- `last_retry_at`
+- `idx_reminder_send_logs_retry_status`
+
+新增接口：
+
+- `GET /admin/reminder-logs/summary`
+- `POST /admin/reminder-logs/retry`
+
+用途：
+
+- 汇总近 24 小时失败告警
+- 对失败提醒手动重试
+
+## 6. 线上迁移状态
+
+已于 `2026-03-20` 完成以下线上变更：
+
+- 创建 `user_violation_records`
+- 创建 `admin_action_confirmations`
+- 创建 `user_message_reads`
+- 为 `reminder_send_logs` 补齐重试字段与索引
+- 重新部署 `miniprogram/cloudfunctions/db-query`
+
+说明：
+
+- `db-query` 云函数最新线上发布时间已核对
+- 如果后续继续修改 `miniprogram/cloudfunctions/db-query/`，本地改完后仍然要重新部署
+
+## 7. 本地启动方式
 
 后端：
 
@@ -129,7 +203,7 @@ npm run build
 npm run dev
 ```
 
-## 7. 环境变量重点
+## 8. 环境变量重点
 
 后端参考：
 
@@ -156,83 +230,24 @@ npm run dev
 
 - `VITE_API_BASE_URL`
 
-## 8. 容易踩坑的地方
+## 9. 推荐接手顺序
 
-### 8.1 不要只看本地 entity
+1. 先读本文件
+2. 再读 [api-reference.md](/E:/codebese1/docs/api-reference.md)
+3. 再读 [database-open-source.md](/E:/codebese1/docs/database-open-source.md)
+4. 需要部署时读 [backend-deployment.md](/E:/codebese1/docs/backend-deployment.md)
+5. 回归前读 [test-cases.md](/E:/codebese1/docs/test-cases.md)
 
-不要只相信：
+## 10. 后续开发建议
 
-- `backend/src/common/entities/*.entity.ts`
-- 旧版 `database/schema.sql`
-- 旧 README
+如果后续继续扩展治理体系，建议延续当前这套模式：
 
-遇到数据库问题，先查 CloudBase 线上真实结构。
+- 独立权限域
+- 独立违规记录
+- 独立申诉类型
+- 后台审核后自动联动解除或维持限制
+- 小程序通知中心同步回执
 
-### 8.2 `synchronize` 已关闭
-
-当前后端是：
-
-- `synchronize: false`
-
-这意味着改表后必须手动同步：
-
-- CloudBase 线上表
-- `database/open-source-schema.sql`
-- 相关文档
-
-### 8.3 云函数代码改了不等于线上生效
-
-如果改了以下目录：
-
-- `miniprogram/cloudfunctions/db-query/`
-- `miniprogram/cloudfunctions/user-getOrCreate/`
-
-仍然需要重新部署 CloudBase 云函数。
-
-### 8.4 后台菜单丢失通常不是功能没了
-
-优先检查：
-
-- 当前管理员 `role`
-- `permission_json`
-- 浏览器缓存中的 `admin_profile`
-- `/admin/profile`
-
-## 9. 推荐阅读顺序
-
-1. 本文档
-2. [api-reference.md](/E:/codebese1/docs/api-reference.md)
-3. [database-open-source.md](/E:/codebese1/docs/database-open-source.md)
-4. [backend-deployment.md](/E:/codebese1/docs/backend-deployment.md)
-5. [test-cases.md](/E:/codebese1/docs/test-cases.md)
-
-## 10. 一句话建议
+## 11. 一句话提醒
 
 这个项目最容易出问题的地方，不是代码不会写，而是“本地认知和 CloudBase 线上真实状态不一致”。先核实，再开发。
-
-## 11. 2026-03-19 追加：资料违规治理
-
-本次新增了两组独立用户限制域：
-
-- `avatar_status` / `avatar_ban_reason` / `avatar_banned_until`
-- `signature_status` / `signature_ban_reason` / `signature_banned_until`
-
-同时 `user_appeals.appeal_type` 已扩展为：
-
-- `account`
-- `note`
-- `share`
-- `avatar`
-- `signature`
-
-影响范围：
-
-- `backend/src/admin/admin.service.ts`
-- `admin/src/views/Users.vue`
-- `admin/src/views/Appeals.vue`
-- `miniprogram/pages/profile/*`
-- `miniprogram/pages/appeals/*`
-- `miniprogram/utils/restriction.js`
-- `miniprogram/cloudfunctions/db-query/index.js`
-
-如果后续继续扩展资料治理（例如昵称、学校、专业单独审核），优先沿用这套“独立限制域 + 独立申诉类型 + 后台解封”的模式。

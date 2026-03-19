@@ -6,11 +6,13 @@ import { AdminController } from './admin.controller';
 import { AdminAuditService } from './admin-audit.service';
 import { AdminService } from './admin.service';
 import { AdminAuthGuard } from './admin-auth.guard';
+import { RemindersModule } from '../reminders/reminders.module';
 
 @Module({
   imports: [
     ConfigModule,
     TypeOrmModule.forFeature([]),
+    RemindersModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

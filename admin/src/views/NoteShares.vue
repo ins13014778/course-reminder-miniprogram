@@ -3,12 +3,12 @@
     <section class="hero-panel">
       <div>
         <div class="section-kicker">Note Sharing</div>
-        <h2>集中查看笔记分享链接、分享状态和浏览情况，支持直接封禁违规分享。</h2>
-        <p>如果某条分享内容违规，可以在这里直接停用分享链接，不影响原笔记继续留存待审。</p>
+        <h2>集中管理笔记分享链接，支持批量封禁与恢复。</h2>
+        <p>如果某条分享内容违规，可以直接封禁分享链接，不影响原笔记继续保留待审。</p>
       </div>
       <div class="hero-side">
         <strong>{{ rows.length }}</strong>
-        <div class="muted-text">条分享记录</div>
+        <div class="muted-text">分享记录</div>
       </div>
     </section>
 
@@ -16,7 +16,7 @@
       <div class="panel-header">
         <div>
           <div class="panel-title">分享记录</div>
-          <div class="panel-subtitle">支持按分享码、发布者昵称和笔记正文关键词检索。</div>
+          <div class="panel-subtitle">支持按分享码、发布者和正文关键词搜索。</div>
         </div>
         <div class="panel-toolbar">
           <el-input
@@ -27,11 +27,16 @@
             @keyup.enter="loadData"
           />
           <el-button type="primary" @click="loadData">查询</el-button>
+          <el-button :disabled="!selectedIds.length" @click="runBatch('blocked')">批量封禁</el-button>
+          <el-button :disabled="!selectedIds.length" @click="runBatch('active')">批量恢复</el-button>
         </div>
       </div>
 
+      <div class="muted-text" style="margin-bottom: 12px">已选择 {{ selectedIds.length }} 条分享</div>
+
       <div class="editorial-table">
-        <el-table :data="rows" v-loading="loading">
+        <el-table :data="rows" v-loading="loading" @selection-change="onSelectionChange">
+          <el-table-column type="selection" width="52" />
           <el-table-column prop="id" label="ID" width="80" />
           <el-table-column label="分享码" min-width="180">
             <template #default="{ row }">{{ row.share_code }}</template>
@@ -72,7 +77,7 @@
                   type="danger"
                   plain
                   size="small"
-                  @click="updateStatus(row, 'blocked')"
+                  @click="updateStatus([row.id], 'blocked')"
                 >
                   封禁分享
                 </el-button>
@@ -81,7 +86,7 @@
                   type="success"
                   plain
                   size="small"
-                  @click="updateStatus(row, 'active')"
+                  @click="updateStatus([row.id], 'active')"
                 >
                   恢复分享
                 </el-button>
@@ -115,11 +120,6 @@
             preview-teleported
             fit="cover"
           />
-          <div class="muted-text">点击图片可放大查看</div>
-        </div>
-        <div v-if="selectedRow.image_url" class="detail-item">
-          <strong>原始 FileID</strong>
-          <span>{{ selectedRow.image_url }}</span>
         </div>
       </div>
     </el-dialog>
@@ -132,18 +132,24 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { noteShareApi } from '../api'
 import { formatDateTime, trimText } from '../utils/format'
 import { resolveCloudFileUrl } from '../utils/cloud'
+import { resolveHighRiskConfirmation } from '../utils/high-risk'
 
 const rows = ref<any[]>([])
 const loading = ref(true)
 const keyword = ref('')
 const previewVisible = ref(false)
 const selectedRow = ref<any | null>(null)
+const selectedIds = ref<number[]>([])
 
 function normalizeRow(row: any) {
   return {
     ...row,
     previewImageUrl: resolveCloudFileUrl(row.image_url),
   }
+}
+
+function onSelectionChange(selection: any[]) {
+  selectedIds.value = selection.map((item) => Number(item.id))
 }
 
 async function loadData() {
@@ -161,29 +167,57 @@ function previewRow(row: any) {
   previewVisible.value = true
 }
 
-async function updateStatus(row: any, status: 'active' | 'blocked') {
-  let reason = ''
+async function askReason(status: 'active' | 'blocked') {
+  if (status !== 'blocked') {
+    return ''
+  }
 
+  const result = await ElMessageBox.prompt(
+    '请输入封禁分享原因，用户打开分享页时会看到提示。',
+    '封禁笔记分享',
+    {
+      confirmButtonText: '确认封禁',
+      cancelButtonText: '取消',
+      inputPlaceholder: '例如：违规引流、不当内容、被多次举报',
+    },
+  )
+
+  return String(result.value || '').trim()
+}
+
+async function updateStatus(ids: number[], status: 'active' | 'blocked') {
   try {
-    if (status === 'blocked') {
-      const result = await ElMessageBox.prompt(
-        '请输入封禁分享原因，用户打开分享页时会被拦截。',
-        '封禁笔记分享',
-        {
-          confirmButtonText: '确认封禁',
-          cancelButtonText: '取消',
-          inputPlaceholder: '例如：违规引流、内容不当、用户举报',
-        },
-      )
-      reason = result.value
+    const reason = await askReason(status)
+    const extraConfirmation =
+      status === 'blocked'
+        ? await resolveHighRiskConfirmation({
+            actionKey: ids.length > 1 ? 'note_share.status.batch' : 'note_share.status.update',
+            targetType: 'note_share',
+            targetIds: ids,
+            summary: 'block note shares',
+          })
+        : {}
+
+    if (ids.length > 1) {
+      await noteShareApi.batchUpdateStatus({ ids, status, reason, ...extraConfirmation })
+    } else {
+      await noteShareApi.updateStatus(ids[0], { status, reason, ...extraConfirmation })
     }
 
-    await noteShareApi.updateStatus(row.id, { status, reason })
     ElMessage.success(status === 'blocked' ? '分享已封禁' : '分享已恢复')
     await loadData()
   } catch (error: any) {
     if (error === 'cancel') return
   }
+}
+
+async function runBatch(status: 'active' | 'blocked') {
+  if (!selectedIds.value.length) {
+    ElMessage.warning('请先选择分享')
+    return
+  }
+
+  await updateStatus(selectedIds.value, status)
 }
 
 onMounted(loadData)

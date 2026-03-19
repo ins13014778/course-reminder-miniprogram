@@ -10,6 +10,6 @@ import { UserSubscription } from '../common/entities/user-subscription.entity';
 @Module({
   imports: [TypeOrmModule.forFeature([Reminder, Course, UserSubscription])],
   providers: [RemindersService, MessageSenderService, ReminderScheduler],
-  exports: [RemindersService],
+  exports: [RemindersService, MessageSenderService],
 })
 export class RemindersModule {}

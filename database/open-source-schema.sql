@@ -37,6 +37,24 @@ CREATE TABLE `admin_audit_logs` (
   KEY `idx_admin_audit_logs_target` (`target_type`,`target_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE `admin_action_confirmations` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `admin_id` bigint unsigned DEFAULT NULL,
+  `admin_email` varchar(120) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `action_key` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `target_type` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `target_ids_json` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `summary` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `confirmation_code` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `expires_at` datetime NOT NULL,
+  `used_at` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `_openid` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `idx_admin_action_confirmations_admin` (`admin_email`,`action_key`),
+  KEY `idx_admin_action_confirmations_expires` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE `users` (
   `id` int NOT NULL AUTO_INCREMENT,
   `openid` varchar(100) NOT NULL,
@@ -160,12 +178,16 @@ CREATE TABLE `reminder_send_logs` (
   `remark` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `error_message` text COLLATE utf8mb4_unicode_ci,
   `response_json` longtext COLLATE utf8mb4_unicode_ci,
+  `retry_count` int NOT NULL DEFAULT '0',
+  `retried_from_log_id` bigint DEFAULT NULL,
+  `last_retry_at` datetime DEFAULT NULL,
   `sent_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `_openid` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   KEY `idx_reminder_send_logs_status_created` (`status`,`created_at`),
-  KEY `idx_reminder_send_logs_user_created` (`user_id`,`created_at`)
+  KEY `idx_reminder_send_logs_user_created` (`user_id`,`created_at`),
+  KEY `idx_reminder_send_logs_retry_status` (`status`,`retry_count`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `notes` (
@@ -263,6 +285,42 @@ CREATE TABLE `user_appeals` (
   KEY `idx_user_appeals_status_created` (`status`,`created_at`),
   KEY `idx_user_appeals_type_status` (`appeal_type`,`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `user_message_reads` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `message_type` enum('announcement','feedback','appeal') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `message_id` bigint unsigned NOT NULL,
+  `read_at` datetime NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `_openid` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_user_message_reads_user_message` (`user_id`,`message_type`,`message_id`),
+  KEY `idx_user_message_reads_user_read` (`user_id`,`read_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `user_violation_records` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `violation_type` enum('account','note','share','avatar','signature','report') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `source_type` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `source_id` varchar(80) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `action_type` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `reason` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `duration_days` int DEFAULT NULL,
+  `expires_at` datetime DEFAULT NULL,
+  `record_status` enum('active','lifted') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
+  `related_report_id` bigint unsigned DEFAULT NULL,
+  `related_appeal_id` bigint unsigned DEFAULT NULL,
+  `operator_email` varchar(120) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `metadata_json` longtext COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `_openid` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_violation_records_user_created` (`user_id`,`created_at`),
+  KEY `idx_user_violation_records_status` (`record_status`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `schedule_share_keys` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,

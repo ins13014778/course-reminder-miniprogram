@@ -3,12 +3,12 @@
     <section class="hero-panel">
       <div>
         <div class="section-kicker">Admin Accounts</div>
-        <h2>把后台从单一管理员账号升级成可分角色协作的权限体系。</h2>
-        <p>超级管理员可以在这里新增管理员账号、分配权限，并保护系统默认超管账号不被误降权或停用。</p>
+        <h2>把后台从单人管理升级为可分角色协作的权限体系。</h2>
+        <p>超级管理员可以新增管理员账号、分配权限，并对高风险降权/停用操作进行二次确认。</p>
       </div>
       <div class="hero-side">
         <strong>{{ rows.length }}</strong>
-        <div class="muted-text">个管理员账号</div>
+        <div class="muted-text">管理员账号</div>
       </div>
     </section>
 
@@ -17,7 +17,7 @@
         <div class="panel-header">
           <div>
             <div class="panel-title">管理员列表</div>
-            <div class="panel-subtitle">系统默认超管账号仅可查看，不允许在这里修改角色或停用。</div>
+            <div class="panel-subtitle">系统默认超管账号仅可查看，不允许在这里直接降权或停用。</div>
           </div>
         </div>
 
@@ -83,10 +83,10 @@
           </el-form-item>
 
           <div v-if="isProtectedEditing" class="muted-text">
-            系统默认超管账号只用于保底接管，后台仅允许新增其他管理员，不允许在这里修改该账号。
+            系统默认超管账号只用于保底接管，后台仅允许新增其他管理员，不允许在这里直接修改该账号。
           </div>
 
-          <div class="actions">
+          <div class="toolbar-actions">
             <el-button type="primary" :loading="saving" @click="submit" :disabled="isProtectedEditing">
               {{ editingId ? '保存修改' : '创建账号' }}
             </el-button>
@@ -102,6 +102,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { adminAccountApi } from '../api'
+import { resolveHighRiskConfirmation } from '../utils/high-risk'
 
 const rows = ref<any[]>([])
 const loading = ref(true)
@@ -178,12 +179,20 @@ async function submit() {
   saving.value = true
   try {
     if (editingId.value) {
+      const extraConfirmation = await resolveHighRiskConfirmation({
+        actionKey: 'admin_account.update',
+        targetType: 'admin_account',
+        targetIds: [editingId.value],
+        summary: 'update admin account',
+      })
+
       await adminAccountApi.update(editingId.value, {
         name: form.name,
         role: form.role,
         status: form.status,
         password: form.password || undefined,
         permissions: form.permissions,
+        ...extraConfirmation,
       })
       ElMessage.success('管理员账号已更新')
     } else {

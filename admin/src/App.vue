@@ -1,7 +1,7 @@
 <template>
   <RouterView v-if="route.meta.public" />
   <div v-else class="console-shell">
-    <aside class="console-sidebar">
+    <aside class="console-sidebar console-sidebar-desktop">
       <div class="brand-card">
         <div class="brand-kicker">Campus Governance Console</div>
         <div class="brand-title">课表提醒后台</div>
@@ -30,28 +30,74 @@
       </div>
     </aside>
 
+    <el-drawer
+      v-model="mobileNavOpen"
+      class="mobile-nav-drawer"
+      direction="ltr"
+      size="364px"
+      :with-header="false"
+    >
+      <div class="console-sidebar console-sidebar-mobile">
+        <div class="brand-card mobile-brand-card">
+          <div class="brand-kicker">Mobile Console</div>
+          <div class="brand-title brand-title-mobile">课表提醒后台</div>
+          <p class="brand-copy">按照 iPhone 14 Pro Max 的 430 宽度重新收口，适合手机单手浏览与切页。</p>
+        </div>
+
+        <nav class="nav-stack">
+          <RouterLink
+            v-for="item in visibleNavItems"
+            :key="`mobile-${item.path}`"
+            :to="item.path"
+            class="nav-link"
+            :class="{ active: route.path === item.path }"
+            @click="mobileNavOpen = false"
+          >
+            <el-icon><component :is="item.icon" /></el-icon>
+            <span>{{ item.label }}</span>
+          </RouterLink>
+        </nav>
+
+        <div class="sidebar-status">
+          <div class="status-label">当前账号</div>
+          <strong>{{ adminProfile?.roleLabel || '后台管理员' }}</strong>
+          <span>{{ adminProfile?.email || '未读取到管理员信息' }}</span>
+        </div>
+      </div>
+    </el-drawer>
+
     <main class="console-main">
-      <header class="console-header">
-        <div>
-          <div class="page-kicker">Operations Mode</div>
-          <h1>{{ currentTitle }}</h1>
-        </div>
+      <div class="console-content-frame">
+        <header class="console-header">
+          <div class="header-main">
+            <button class="mobile-nav-trigger" type="button" @click="mobileNavOpen = true">
+              <el-icon><Menu /></el-icon>
+            </button>
 
-        <div class="header-actions">
-          <div class="header-badge">{{ adminProfile?.roleLabel || '后台管理员' }}</div>
-          <el-button plain @click="logout">
-            {{ adminProfile?.email || '退出登录' }}
-          </el-button>
-        </div>
-      </header>
+            <div class="header-copy">
+              <div class="page-kicker">Operations Mode</div>
+              <h1>{{ currentTitle }}</h1>
+            </div>
+          </div>
 
-      <RouterView />
+          <div class="header-actions">
+            <div class="header-badge">{{ adminProfile?.roleLabel || '后台管理员' }}</div>
+            <el-button plain @click="logout">
+              {{ adminProfile?.email || '退出登录' }}
+            </el-button>
+          </div>
+        </header>
+
+        <div class="console-route-view">
+          <RouterView />
+        </div>
+      </div>
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import {
   Bell,
@@ -59,6 +105,7 @@ import {
   DataAnalysis,
   Document,
   Memo,
+  Menu,
   Notebook,
   Share,
   User,
@@ -69,6 +116,7 @@ import { clearAdminSession, getAdminProfile, hasAdminPermission, hasAdminRole, s
 
 const route = useRoute()
 const router = useRouter()
+const mobileNavOpen = ref(false)
 
 const navItems = [
   { path: '/overview', label: '总览', icon: DataAnalysis },
@@ -131,6 +179,13 @@ async function refreshAdminProfile() {
   }
 }
 
+watch(
+  () => route.path,
+  () => {
+    mobileNavOpen.value = false
+  },
+)
+
 onMounted(refreshAdminProfile)
 </script>
 
@@ -146,6 +201,7 @@ onMounted(refreshAdminProfile)
   --accent: #926247;
   --danger: #c84d3a;
   --success: #2f6b4f;
+  --mobile-frame-width: 430px;
 }
 
 * {
@@ -174,23 +230,31 @@ a {
 }
 
 .console-shell {
-  height: 100vh;
+  min-height: 100vh;
   display: grid;
   grid-template-columns: 292px minmax(0, 1fr);
-  overflow: hidden;
 }
 
 .console-sidebar {
-  position: sticky;
-  top: 0;
-  height: 100vh;
   display: flex;
   flex-direction: column;
   gap: 22px;
+  background: linear-gradient(180deg, rgba(251, 248, 241, 0.94), rgba(243, 236, 225, 0.88));
+}
+
+.console-sidebar-desktop {
+  position: sticky;
+  top: 0;
+  height: 100vh;
   padding: 24px 20px;
   overflow-y: auto;
-  background: linear-gradient(180deg, rgba(251, 248, 241, 0.94), rgba(243, 236, 225, 0.88));
   border-right: 1px solid var(--line-soft);
+}
+
+.console-sidebar-mobile {
+  min-height: 100%;
+  padding: 16px 14px calc(18px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
 }
 
 .brand-card,
@@ -205,6 +269,10 @@ a {
 .brand-card {
   border-radius: 28px;
   padding: 22px 20px;
+}
+
+.mobile-brand-card {
+  border-radius: 24px;
 }
 
 .brand-kicker,
@@ -223,6 +291,10 @@ a {
   font-size: 40px;
   line-height: 0.95;
   letter-spacing: 0.02em;
+}
+
+.brand-title-mobile {
+  font-size: 30px;
 }
 
 .brand-copy {
@@ -280,12 +352,17 @@ a {
   margin-top: 8px;
   color: var(--ink-soft);
   font-size: 12px;
+  line-height: 1.6;
 }
 
 .console-main {
-  height: 100vh;
+  min-height: 100vh;
   overflow-y: auto;
   padding: 28px;
+}
+
+.console-content-frame {
+  width: 100%;
 }
 
 .console-header {
@@ -294,6 +371,17 @@ a {
   justify-content: space-between;
   gap: 18px;
   margin-bottom: 22px;
+}
+
+.header-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+}
+
+.header-copy {
+  min-width: 0;
 }
 
 .console-header h1 {
@@ -320,6 +408,28 @@ a {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.08em;
+}
+
+.mobile-nav-trigger {
+  display: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 252, 246, 0.92);
+  color: var(--ink-main);
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 10px 24px rgba(88, 69, 47, 0.08);
+}
+
+.mobile-nav-trigger .el-icon {
+  font-size: 20px;
+}
+
+.console-route-view {
+  width: 100%;
 }
 
 .editorial-page {
@@ -503,6 +613,11 @@ a {
   background: var(--danger);
 }
 
+.editorial-table {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .editorial-table .el-table {
   --el-table-border-color: rgba(146, 98, 71, 0.12);
   --el-table-header-bg-color: rgba(239, 230, 216, 0.82);
@@ -583,6 +698,10 @@ a {
   flex-wrap: wrap;
 }
 
+.mobile-nav-drawer .el-drawer__body {
+  padding: 0;
+}
+
 .el-button,
 .el-input__wrapper,
 .el-textarea__inner,
@@ -612,25 +731,64 @@ a {
 
 @media (max-width: 980px) {
   .console-shell {
-    height: auto;
     grid-template-columns: 1fr;
-    overflow: visible;
   }
 
-  .console-sidebar {
-    position: static;
-    height: auto;
-    overflow: visible;
+  .console-sidebar-desktop {
+    display: none;
+  }
+
+  .mobile-nav-trigger {
+    display: inline-flex;
   }
 
   .console-main {
-    height: auto;
-    overflow: visible;
-    padding: 20px;
+    padding: 14px 12px calc(18px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .console-content-frame {
+    width: min(100%, var(--mobile-frame-width));
+    margin: 0 auto;
   }
 
   .console-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    margin-bottom: 14px;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 12px;
+    border: 1px solid var(--line-soft);
+    border-radius: 22px;
+    background: rgba(248, 244, 236, 0.94);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 16px 38px rgba(88, 69, 47, 0.08);
     flex-direction: column;
+    gap: 12px;
+  }
+
+  .header-main,
+  .header-actions {
+    width: 100%;
+  }
+
+  .header-actions {
+    justify-content: space-between;
+    align-items: stretch;
+  }
+
+  .header-actions .el-button {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .console-header h1 {
+    margin-top: 8px;
+    font-size: 28px;
+    line-height: 1.06;
+  }
+
+  .page-kicker {
+    font-size: 10px;
   }
 }
 
@@ -643,10 +801,144 @@ a {
 
   .hero-panel {
     flex-direction: column;
+    padding: 18px;
+  }
+
+  .hero-panel h2 {
+    font-size: 24px;
   }
 
   .hero-side {
+    min-width: 0;
     text-align: left;
+  }
+
+  .panel-card {
+    padding: 16px;
+    border-radius: 22px;
+  }
+
+  .panel-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .panel-toolbar {
+    width: 100%;
+  }
+
+  .panel-toolbar > * {
+    width: 100% !important;
+  }
+
+  .toolbar-actions {
+    width: 100%;
+  }
+
+  .toolbar-actions > * {
+    flex: 1 1 calc(50% - 5px);
+    min-width: 0;
+  }
+
+  .brand-card {
+    border-radius: 22px;
+    padding: 18px 16px;
+  }
+
+  .brand-title-mobile {
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 430px) {
+  .console-main {
+    padding: 10px 8px calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .console-content-frame {
+    width: 100%;
+    max-width: 430px;
+  }
+
+  .console-header {
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 10px 10px;
+    border-radius: 20px;
+  }
+
+  .mobile-nav-trigger {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+  }
+
+  .console-header h1 {
+    font-size: 24px;
+  }
+
+  .header-badge {
+    padding: 10px 12px;
+    font-size: 11px;
+  }
+
+  .hero-panel,
+  .panel-card,
+  .surface-card,
+  .summary-card,
+  .detail-item,
+  .permission-card {
+    border-radius: 18px;
+  }
+
+  .hero-panel {
+    padding: 14px;
+    gap: 14px;
+  }
+
+  .hero-panel h2 {
+    font-size: 21px;
+    line-height: 1.14;
+  }
+
+  .hero-panel p,
+  .panel-subtitle,
+  .muted-text,
+  .summary-card .meta {
+    font-size: 12px;
+    line-height: 1.65;
+  }
+
+  .panel-card {
+    padding: 14px;
+  }
+
+  .panel-title {
+    font-size: 20px;
+  }
+
+  .summary-card {
+    padding: 14px;
+  }
+
+  .summary-card .value,
+  .hero-side strong {
+    font-size: 24px;
+  }
+
+  .surface-card {
+    padding: 14px;
+  }
+
+  .detail-item,
+  .permission-card {
+    padding: 12px;
+  }
+
+  .editorial-table .el-table {
+    min-width: 620px;
+  }
+
+  .mobile-nav-drawer {
+    --el-drawer-size: min(364px, 100vw);
   }
 }
 </style>

@@ -3,15 +3,12 @@
     <section class="hero-panel">
       <div>
         <div class="section-kicker">User Governance</div>
-        <h2>统一查看用户课表、笔记、分享密钥与资料违规状态</h2>
-        <p>
-          这里可以直接处理账号、笔记、分享、头像、个性签名五类权限限制，并联动查看该用户的课表、
-          已发布笔记和分享密钥，方便后台做完整审核。
-        </p>
+        <h2>统一查看用户状态、批量封禁解封，并保留完整违规档案。</h2>
+        <p>这里把账号、笔记、分享、头像、个签五类权限合并在一个治理台里，同时展示用户课表、笔记、分享密钥和累计处罚记录。</p>
       </div>
       <div class="hero-side">
         <strong>{{ users.length }}</strong>
-        <div class="muted-text">已注册用户</div>
+        <div class="muted-text">当前列表用户</div>
       </div>
     </section>
 
@@ -19,7 +16,7 @@
       <div class="panel-header">
         <div>
           <div class="panel-title">用户治理列表</div>
-          <div class="panel-subtitle">支持昵称、学校、专业、OpenID 搜索，并可直接进入用户详情进行权限控制。</div>
+          <div class="panel-subtitle">支持关键词搜索、批量权限调整、单用户详情下钻。</div>
         </div>
         <div class="panel-toolbar">
           <el-input
@@ -30,11 +27,15 @@
             @keyup.enter="loadData"
           />
           <el-button type="primary" @click="loadData">查询</el-button>
+          <el-button :disabled="!selectedIds.length" @click="openBatchDialog">批量权限</el-button>
         </div>
       </div>
 
+      <div class="muted-text" style="margin-bottom: 12px">已选择 {{ selectedIds.length }} 人</div>
+
       <div class="editorial-table">
-        <el-table :data="users" v-loading="loading">
+        <el-table :data="users" v-loading="loading" @selection-change="onSelectionChange">
+          <el-table-column type="selection" width="52" />
           <el-table-column prop="id" label="ID" width="80" />
           <el-table-column label="用户" min-width="220">
             <template #default="{ row }">
@@ -58,7 +59,7 @@
           </el-table-column>
           <el-table-column
             v-for="item in permissionConfigs"
-            :key="`list-${item.key}`"
+            :key="item.key"
             :label="item.shortLabel"
             width="112"
           >
@@ -79,6 +80,41 @@
         </el-table>
       </div>
     </section>
+
+    <el-dialog v-model="batchDialogVisible" title="批量权限调整" width="520px">
+      <el-form label-position="top">
+        <el-form-item label="权限类型">
+          <el-select v-model="batchForm.permissionKey" style="width: 100%">
+            <el-option
+              v-for="item in permissionConfigs"
+              :key="`batch-${item.key}`"
+              :label="item.label"
+              :value="item.key"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="操作">
+          <el-radio-group v-model="batchForm.mode">
+            <el-radio-button label="active">批量解封</el-radio-button>
+            <el-radio-button label="banned">批量封禁</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="封禁天数" v-if="batchForm.mode === 'banned'">
+          <el-input-number v-model="batchForm.durationDays" :min="1" :disabled="batchForm.permanent" />
+          <el-checkbox v-model="batchForm.permanent" style="margin-left: 12px">永久封禁</el-checkbox>
+        </el-form-item>
+        <el-form-item label="原因">
+          <el-input v-model="batchForm.reason" type="textarea" :rows="3" placeholder="填写统一处理原因" />
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <div class="toolbar-actions">
+          <el-button @click="batchDialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="batchSaving" @click="submitBatchPermissions">确认提交</el-button>
+        </div>
+      </template>
+    </el-dialog>
 
     <el-drawer v-model="drawerVisible" size="72%" :with-header="false">
       <div v-if="detail" class="stack-grid">
@@ -120,6 +156,24 @@
           </div>
         </section>
 
+        <section class="summary-grid">
+          <article class="summary-card">
+            <div class="eyebrow">累计处罚</div>
+            <div class="value">{{ detail.violationStats?.total || 0 }}</div>
+            <div class="meta">历史违规与处置记录总数</div>
+          </article>
+          <article class="summary-card">
+            <div class="eyebrow">当前生效</div>
+            <div class="value">{{ detail.violationStats?.active || 0 }}</div>
+            <div class="meta">仍处于生效中的处罚记录</div>
+          </article>
+          <article class="summary-card">
+            <div class="eyebrow">已解除</div>
+            <div class="value">{{ detail.violationStats?.lifted || 0 }}</div>
+            <div class="meta">已完成申诉或恢复的记录</div>
+          </article>
+        </section>
+
         <section class="split-grid">
           <div class="stack-grid">
             <div v-for="item in permissionConfigs" :key="item.key" class="permission-card">
@@ -152,9 +206,26 @@
 
           <div class="stack-grid">
             <section class="surface-card">
+              <div class="section-kicker">Violation Archive</div>
+              <h4>违规档案</h4>
+              <div class="muted-text">记录每次封禁、下架、申诉解封等治理动作，方便累计处罚判断。</div>
+              <div class="editorial-table" style="margin-top: 14px">
+                <el-table :data="detail.violationRecords || []" max-height="280">
+                  <el-table-column prop="violation_type" label="类型" width="100" />
+                  <el-table-column prop="action_type" label="动作" min-width="120" />
+                  <el-table-column prop="record_status" label="状态" width="90" />
+                  <el-table-column prop="reason" label="原因" min-width="220" />
+                  <el-table-column label="时间" min-width="170">
+                    <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+                  </el-table-column>
+                </el-table>
+              </div>
+            </section>
+
+            <section class="surface-card">
               <div class="section-kicker">Schedule</div>
               <h4>用户课表</h4>
-              <div class="muted-text">共 {{ detail.courses.length }} 门课，可直接核查该用户的完整课表。</div>
+              <div class="muted-text">共 {{ detail.courses.length }} 门课，用于核对提醒、分享和导入问题。</div>
               <div class="editorial-table" style="margin-top: 14px">
                 <el-table :data="detail.courses" max-height="280">
                   <el-table-column prop="course_name" label="课程" min-width="160" />
@@ -171,7 +242,6 @@
             <section class="surface-card">
               <div class="section-kicker">Notes</div>
               <h4>用户笔记</h4>
-              <div class="muted-text">共 {{ detail.notes.length }} 条，可辅助判断笔记权限是否需要继续限制。</div>
               <div class="editorial-table" style="margin-top: 14px">
                 <el-table :data="detail.notes" max-height="220">
                   <el-table-column label="状态" width="90">
@@ -191,7 +261,6 @@
             <section class="surface-card">
               <div class="section-kicker">Share Keys</div>
               <h4>分享密钥</h4>
-              <div class="muted-text">共 {{ detail.shareKeys.length }} 条，可判断是否需要同步禁用单个分享密钥。</div>
               <div class="editorial-table" style="margin-top: 14px">
                 <el-table :data="detail.shareKeys" max-height="220">
                   <el-table-column prop="share_key" label="密钥" min-width="140" />
@@ -218,6 +287,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { userApi } from '../api'
 import { formatDateTime, sectionLabel, trimText, weekdayLabel } from '../utils/format'
+import { resolveHighRiskConfirmation } from '../utils/high-risk'
 
 type PermissionKey = 'account' | 'note' | 'share' | 'avatar' | 'signature'
 
@@ -240,46 +310,46 @@ const permissionConfigs: Array<{
   {
     key: 'account',
     label: '账号权限',
-    shortLabel: '账号权限',
+    shortLabel: '账号',
     tagType: 'danger',
-    description: '封禁后，用户登录与绝大多数写入操作都会被拦截。',
-    placeholder: '例如：恶意刷接口、违规行为、确认封号',
+    description: '封禁后用户登录和大多数写入动作都会被拦截。',
+    placeholder: '例如：恶意刷接口、确认违规行为',
     buttonText: '保存账号权限',
   },
   {
     key: 'note',
     label: '笔记权限',
-    shortLabel: '笔记权限',
+    shortLabel: '笔记',
     tagType: 'warning',
-    description: '封禁后，用户将无法发布、编辑、删除笔记。',
+    description: '封禁后用户无法发布、编辑、删除笔记。',
     placeholder: '例如：违规笔记、广告引流、恶意刷屏',
     buttonText: '保存笔记权限',
   },
   {
     key: 'share',
-    label: '分享密钥权限',
-    shortLabel: '密钥权限',
+    label: '分享权限',
+    shortLabel: '分享',
     tagType: 'warning',
-    description: '封禁后，用户无法生成、查询或使用分享密钥导入课表。',
-    placeholder: '例如：分享滥用、异常导入、批量传播',
-    buttonText: '保存密钥权限',
+    description: '封禁后用户无法生成和使用课表或笔记分享能力。',
+    placeholder: '例如：滥用分享、异常传播、违规导入',
+    buttonText: '保存分享权限',
   },
   {
     key: 'avatar',
     label: '头像权限',
-    shortLabel: '头像权限',
+    shortLabel: '头像',
     tagType: 'warning',
-    description: '封禁后，用户无法重新上传或修改头像，可用于单独处理头像违规。',
-    placeholder: '例如：头像违规、冒名他人、涉黄涉暴',
+    description: '封禁后用户无法修改头像，用于单独处理头像违规。',
+    placeholder: '例如：头像违规、冒用他人、涉黄涉暴',
     buttonText: '保存头像权限',
   },
   {
     key: 'signature',
-    label: '个性签名权限',
-    shortLabel: '个签权限',
+    label: '个签权限',
+    shortLabel: '个签',
     tagType: 'warning',
-    description: '封禁后，用户无法修改个性签名，可用于单独处理资料文案违规。',
-    placeholder: '例如：个性签名违规、广告引流、辱骂攻击',
+    description: '封禁后用户无法修改个性签名，用于处理资料违规。',
+    placeholder: '例如：个签违规、广告引流、辱骂攻击',
     buttonText: '保存个签权限',
   },
 ]
@@ -287,10 +357,13 @@ const permissionConfigs: Array<{
 const users = ref<any[]>([])
 const loading = ref(true)
 const keyword = ref('')
+const selectedIds = ref<number[]>([])
 const drawerVisible = ref(false)
 const detailLoading = ref(false)
 const detail = ref<any | null>(null)
 const selectedUserId = ref<number | null>(null)
+const batchDialogVisible = ref(false)
+const batchSaving = ref(false)
 
 const permissionForms = reactive<Record<PermissionKey, PermissionFormState>>({
   account: { mode: 'active', durationDays: 7, permanent: false, reason: '' },
@@ -300,6 +373,20 @@ const permissionForms = reactive<Record<PermissionKey, PermissionFormState>>({
   signature: { mode: 'active', durationDays: 7, permanent: false, reason: '' },
 })
 
+const batchForm = reactive<{
+  permissionKey: PermissionKey
+  mode: 'active' | 'banned'
+  durationDays: number | null
+  permanent: boolean
+  reason: string
+}>({
+  permissionKey: 'account',
+  mode: 'banned',
+  durationDays: 7,
+  permanent: false,
+  reason: '',
+})
+
 function calcRemainingDays(until?: string | null) {
   if (!until) return null
   const time = new Date(until).getTime()
@@ -307,6 +394,20 @@ function calcRemainingDays(until?: string | null) {
   const diff = time - Date.now()
   if (diff <= 0) return 1
   return Math.ceil(diff / (24 * 60 * 60 * 1000))
+}
+
+function onSelectionChange(rows: any[]) {
+  selectedIds.value = rows.map((item) => Number(item.id))
+}
+
+function buildPermissionPayload(key: PermissionKey, source: PermissionFormState) {
+  return {
+    [key]: {
+      mode: source.mode,
+      durationDays: source.mode === 'banned' && !source.permanent ? source.durationDays : null,
+      reason: source.reason,
+    },
+  }
 }
 
 function syncPermissionForms() {
@@ -357,17 +458,73 @@ async function savePermission(key: PermissionKey) {
   if (!selectedUserId.value) return
 
   const source = permissionForms[key]
-  const payload = {
-    [key]: {
-      mode: source.mode,
-      durationDays: source.mode === 'banned' && !source.permanent ? source.durationDays : null,
-      reason: source.reason,
-    },
-  }
+  const payload = buildPermissionPayload(key, source)
+  const extraConfirmation =
+    source.mode === 'banned'
+      ? await resolveHighRiskConfirmation({
+          actionKey: 'user.permissions.update',
+          targetType: 'user',
+          targetIds: [selectedUserId.value],
+          summary: `${key} permission ban`,
+        })
+      : {}
 
-  await userApi.updatePermissions(selectedUserId.value, payload)
+  await userApi.updatePermissions(selectedUserId.value, {
+    ...payload,
+    ...extraConfirmation,
+  })
   ElMessage.success('权限已更新')
   await refreshSelectedUser()
+}
+
+function openBatchDialog() {
+  if (!selectedIds.value.length) {
+    ElMessage.warning('请先选择用户')
+    return
+  }
+  batchDialogVisible.value = true
+}
+
+async function submitBatchPermissions() {
+  if (!selectedIds.value.length) {
+    ElMessage.warning('请先选择用户')
+    return
+  }
+
+  batchSaving.value = true
+  try {
+    const permissions = buildPermissionPayload(batchForm.permissionKey, {
+      mode: batchForm.mode,
+      durationDays: batchForm.durationDays,
+      permanent: batchForm.permanent,
+      reason: batchForm.reason,
+    })
+
+    const extraConfirmation =
+      batchForm.mode === 'banned'
+        ? await resolveHighRiskConfirmation({
+            actionKey: 'user.permissions.batch',
+            targetType: 'user',
+            targetIds: selectedIds.value,
+            summary: `batch ${batchForm.permissionKey} permission update`,
+          })
+        : {}
+
+    await userApi.batchUpdatePermissions({
+      ids: selectedIds.value,
+      permissions,
+      ...extraConfirmation,
+    })
+
+    ElMessage.success('批量权限已更新')
+    batchDialogVisible.value = false
+    await loadData()
+    if (selectedUserId.value) {
+      await refreshSelectedUser()
+    }
+  } finally {
+    batchSaving.value = false
+  }
 }
 
 onMounted(loadData)

@@ -299,6 +299,7 @@ Page({
   goToCourses() { wx.switchTab({ url: '/pages/courses/courses' }); },
   goToImport() { wx.switchTab({ url: '/pages/import/import' }); },
   goToSettings() { wx.navigateTo({ url: '/pages/settings/settings' }); },
+  goToNotificationCenter() { wx.navigateTo({ url: '/pages/notification-center/notification-center' }); },
   goToProfile() { wx.switchTab({ url: '/pages/profile/profile' }); },
   goToLogin() { wx.navigateTo({ url: '/pages/login/login' }); }
 });
