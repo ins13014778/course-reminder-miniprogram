@@ -1,60 +1,143 @@
-# 开发接手文档
+# 开发交接文档
 
-最后更新：2026-03-19
+最后更新：`2026-03-19`
 
-这份文档给后续开发者和 AI 使用，目标不是介绍项目理念，而是帮助接手者快速进入“当前真实可开发状态”，减少被旧文档、旧实体和线上环境差异误导的概率。
+这份文档给后续开发者和 AI 使用，目标是帮助接手者快速进入“当前真实可开发状态”。
 
-## 1. 项目概况
+## 1. 项目组成
 
-当前项目是一个多端仓库，核心业务是“课表提醒 + 课表导入 + 分享导入 + 内容与公告运营 + 后台治理”。
+- `miniprogram/`：微信小程序
+- `backend/`：NestJS 后端与提醒调度
+- `admin/`：Vue 3 + Vite 管理后台
+- `database/`：迁移文件与开源数据库结构
+- `docs/`：交接、API、部署、测试文档
 
-目录分工：
+## 2. 真实环境
 
-- `miniprogram/`: 微信小程序，包含页面、工具函数和 CloudBase 云函数
-- `backend/`: NestJS 后端，提供管理台 API、公告接口、提醒调度逻辑
-- `admin/`: Vue 3 + Vite 后台管理台
-- `docs/`: 文档
-- `qa/`: 测试用例或后续测试资产可继续放这里
+- CloudBase `envId`：`dawdawd15-8g023nsw8cb3f68a`
+- CloudBase `alias`：`dawdawd15`
+- Region：`ap-shanghai`
+- 小程序 `cloudenv` 已指向上述环境
 
-## 2. 当前真实运行环境
+涉及 CloudBase 时，先执行：
 
-CloudBase 已确认环境：
+```bash
+npx mcporter describe cloudbase
+npx mcporter call cloudbase.auth action=status --output json
+npx mcporter call cloudbase.auth action=set_env envId=dawdawd15-8g023nsw8cb3f68a --output json
+npx mcporter call cloudbase.envQuery action=info --output json
+```
 
-- `envId`: `dawdawd15-8g023nsw8cb3f68a`
-- `alias`: `dawdawd15`
-- `region`: `ap-shanghai`
+## 3. 当前数据库现状
 
-小程序配置：
+`2026-03-19` 实查线上存在以下表：
 
-- `appid`: `wx3898c6c391c39787`
-- `project.config.json` 中 `cloudenv` 已指向上述 CloudBase 环境
+- `admin_accounts`
+- `admin_audit_logs`
+- `announcements`
+- `content_pages`
+- `content_reports`
+- `course_templates`
+- `courses`
+- `note_shares`
+- `notes`
+- `reminder_send_logs`
+- `reminders`
+- `schedule_share_keys`
+- `user_feedback`
+- `user_subscriptions`
+- `users`
 
-后端本地默认端口：
+开源结构文件见：
 
-- `3000`
+- [database/open-source-schema.sql](/E:/codebese1/database/open-source-schema.sql)
 
-后台本地默认端口：
+数据库说明见：
 
-- `5173`
+- [database-open-source.md](./database-open-source.md)
 
-## 3. 推荐接手顺序
+## 4. 当前关键能力
 
-接手时建议按下面顺序理解项目：
+### 4.1 小程序
 
-1. 先读本文件
-2. 再读 [测试用例文档](./test-cases.md)
-3. 查看 [公告对接记录](./announcements-integration.md)
-4. 再打开代码和真实 CloudBase 环境核对
+- 微信登录
+- 课表查看与编辑
+- 课表冲突检测
+- 课表分享导入
+- 笔记发布
+- 举报
+- 留言反馈
+- 内容页读取
+- 公告读取
+- 通知中心查看反馈处理结果
 
-不要先相信历史 `README`、旧 SQL 草稿或早期总结文档来推断当前真实结构。
+### 4.2 后端
 
-## 4. 本地启动方式
+- 管理员登录
+- 管理员资料同步
+- 角色与细粒度权限控制
+- 用户封号、笔记权限封禁、分享权限封禁
+- 课表查询与删除
+- 笔记审核
+- 笔记分享管理
+- 举报处理
+- 反馈处理
+- 公告管理
+- 内容页管理
+- 提醒调度与发送日志
+- 审计日志
+
+### 4.3 管理后台
+
+- 总览
+- 用户治理
+- 课表巡检
+- 模板课表
+- 分享密钥管理
+- 订阅提醒
+- 提醒日志
+- 笔记审核
+- 笔记分享
+- 内容举报
+- 留言反馈
+- 公告运营
+- 页面配置
+- 审计日志
+- 管理员账号与权限分配
+
+## 5. 当前管理员权限机制
+
+当前管理员体系不是只靠角色判断，还包括细粒度权限字段：
+
+- 字段：`admin_accounts.permission_json`
+- 角色：`super_admin / operator / moderator / support`
+- 细粒度权限例如：
+  - `user.view`
+  - `user.ban`
+  - `course.view`
+  - `course.manage`
+  - `note.moderate`
+  - `report.review`
+  - `feedback.review`
+  - `announcement.manage`
+  - `content.manage`
+  - `audit.view`
+  - `admin.manage`
+
+额外保护：
+
+- 系统默认超管账号禁止在后台降权或停用
+- 管理员不能在后台把自己降权或停用
+- 登录后后台会自动拉取当前最新管理员资料，避免旧缓存导致菜单缺失
+
+## 6. 本地启动
 
 后端：
 
 ```powershell
 cd E:\codebese1\backend
 npm install
+npm run build
 npm run start:dev
 ```
 
@@ -63,376 +146,87 @@ npm run start:dev
 ```powershell
 cd E:\codebese1\admin
 npm install
+npm run build
 npm run dev
 ```
 
-编译检查：
+## 7. 环境变量
 
-```powershell
-cd E:\codebese1\backend
-npm run build
+后端主要环境变量见：
 
-cd E:\codebese1\admin
-npm run build
-```
+- [backend/.env.example](/E:/codebese1/backend/.env.example)
 
-## 5. 代码结构速览
+重点变量：
 
-### 5.1 小程序
+- `PORT`
+- `DB_HOST`
+- `DB_PORT`
+- `DB_USERNAME`
+- `DB_PASSWORD`
+- `DB_DATABASE`
+- `JWT_SECRET`
+- `WECHAT_APPID`
+- `WECHAT_SECRET`
+- `WECHAT_SUBSCRIBE_TEMPLATE_ID`
+- `SEMESTER_START_DATE`
+- `ADMIN_EMAIL`
+- `ADMIN_NAME`
+- `ADMIN_PASSWORD_HASH`
+- `OCR_API_URL`
+- `OCR_API_KEY`
 
-关键目录：
+前端主要环境变量：
 
-- `miniprogram/pages/index/`: 首页，公告与用户主入口
-- `miniprogram/pages/courses/`: 用户课表页
-- `miniprogram/pages/import/`: OCR 导入与分享密钥导入
-- `miniprogram/pages/notes/`: 用户笔记
-- `miniprogram/pages/settings/`: 提醒设置与分享密钥生成
-- `miniprogram/pages/login/`: 登录页
-- `miniprogram/cloudfunctions/db-query/`: 直接执行 SQL 的云函数，现已补权限拦截
-- `miniprogram/cloudfunctions/user-getOrCreate/`: 登录态用户创建/获取云函数，现已补账号封禁校验
+- `VITE_API_BASE_URL`
 
-### 5.2 后端
+## 8. 最容易踩坑的点
 
-关键目录：
+### 8.1 不要只改本地代码
 
-- `backend/src/admin/`: 管理台接口
-- `backend/src/auth/`: 后端登录链路
-- `backend/src/announcements/`: 公告接口
-- `backend/src/reminders/`: 提醒调度、提醒发送、提醒生成逻辑
-- `backend/src/common/entities/`: TypeORM 实体
+如果改的是：
 
-### 5.3 后台
+- `miniprogram/cloudfunctions/`
+- 数据库表结构
+- CloudBase 权限规则
 
-关键目录：
+那只改仓库代码并不等于线上生效。
 
-- `admin/src/App.vue`: 后台整体壳层、导航、全局字体和布局
-- `admin/src/views/Overview.vue`: 总览页
-- `admin/src/views/Users.vue`: 用户详情与权限治理页
-- `admin/src/views/Courses.vue`: 课表巡检页
-- `admin/src/views/Notes.vue`: 笔记审核页
-- `admin/src/views/ShareCenter.vue`: 分享密钥控制页
-- `admin/src/views/Subscriptions.vue`: 订阅提醒列表页
-- `admin/src/views/Announcements.vue`: 公告管理页
+### 8.2 不要只看旧文档和旧 schema
 
-## 6. 当前核心业务链路
+旧版 `README.md`、旧部署文档、旧 SQL 草稿都不能直接作为事实来源。
 
-### 6.1 登录链路
+### 8.3 数据库变更后要同步开源结构
 
-当前小程序真实使用的是 JS 版本登录链路：
+如果后续继续加表或改表，记得同步更新：
 
-- `miniprogram/pages/login/login.js`
-- `miniprogram/services/auth.js`
-- `miniprogram/services/database.js`
-- `miniprogram/cloudfunctions/user-getOrCreate/index.js`
+- [database/open-source-schema.sql](/E:/codebese1/database/open-source-schema.sql)
+- [docs/database-open-source.md](./database-open-source.md)
 
-注意：
-
-- 不要只改 `backend/src/auth/` 就以为登录治理生效了
-- 小程序真实登录更关键的是 `user-getOrCreate` 云函数
-
-### 6.2 课表导入链路
-
-主要入口：
-
-- `miniprogram/pages/import/import.js`
-
-支持：
-
-- OCR 导入
-- 默认模板导入
-- 分享密钥导入
-
-### 6.3 分享密钥链路
-
-生成入口：
-
-- `miniprogram/pages/settings/settings.js`
-
-导入入口：
-
-- `miniprogram/pages/import/import.js`
-
-后台治理：
-
-- `admin/src/views/ShareCenter.vue`
-- `backend/src/admin/admin.service.ts`
-
-### 6.4 笔记链路
-
-用户页：
-
-- `miniprogram/pages/notes/notes.js`
-
-后台审核：
-
-- `admin/src/views/Notes.vue`
-- `PATCH /admin/notes/:id/moderation`
-
-### 6.5 提醒链路
-
-后端提醒逻辑：
-
-- `backend/src/reminders/reminders.service.ts`
-- `backend/src/reminders/reminder.scheduler.ts`
-- `backend/src/reminders/message-sender.service.ts`
-
-设置页入口：
-
-- `miniprogram/pages/settings/settings.js`
-
-当前提醒逻辑已补齐：
-
-- 根据 `SEMESTER_START_DATE` 计算当前周次
-- 根据课程 `start_week` / `end_week` 过滤
-- 支持 `remind_weekends`
-- 通过 `reminders` 表做去重和发送状态记录
-
-### 6.6 公告链路
-
-管理台：
-
-- `admin/src/views/Announcements.vue`
-
-后端：
-
-- `backend/src/announcements/announcements.controller.ts`
-- `backend/src/announcements/announcements.service.ts`
-
-前台读取：
-
-- `miniprogram/pages/index/index.js`
-
-公告功能已接通并经过人工验证。
-
-## 7. 当前后台治理能力
-
-当前后台已具备：
-
-- 查看用户列表
-- 查看用户详情
-- 查看用户完整课表
-- 查看用户笔记
-- 查看用户分享密钥
-- 查看用户提醒订阅
-- 账号封禁
-- 笔记权限封禁
-- 分享密钥权限封禁
-- 支持封禁若干天
-- 支持永久封禁
-- 单条违规笔记下架 / 恢复
-- 单个分享密钥禁用 / 恢复
-
-关键文件：
-
-- [Users.vue](/E:/codebese1/admin/src/views/Users.vue)
-- [Notes.vue](/E:/codebese1/admin/src/views/Notes.vue)
-- [ShareCenter.vue](/E:/codebese1/admin/src/views/ShareCenter.vue)
-- [admin.controller.ts](/E:/codebese1/backend/src/admin/admin.controller.ts)
-- [admin.service.ts](/E:/codebese1/backend/src/admin/admin.service.ts)
-
-## 8. 当前数据库关键表
-
-以下是当前开发最常涉及的表，不是完整字典，而是接手时最需要先知道的表。
-
-### 8.1 `users`
-
-关键字段：
-
-- `id`
-- `openid`
-- `nickname`
-- `signature`
-- `avatar_url`
-- `school`
-- `major`
-- `grade`
-- `account_status`
-- `account_ban_reason`
-- `account_banned_until`
-- `note_status`
-- `note_ban_reason`
-- `note_banned_until`
-- `share_status`
-- `share_ban_reason`
-- `share_banned_until`
-
-说明：
-
-- 账号封禁、笔记权限封禁、分享密钥权限封禁都在这张表上
-
-### 8.2 `courses`
-
-关键字段：
-
-- `id`
-- `user_id`
-- `course_name`
-- `teacher`
-- `location`
-- `weekday`
-- `start_section`
-- `end_section`
-- `start_time`
-- `end_time`
-- `start_week`
-- `end_week`
-
-### 8.3 `notes`
-
-关键字段：
-
-- `id`
-- `user_id`
-- `content`
-- `image_url`
-- `status`
-- `moderation_reason`
-- `moderated_at`
-
-说明：
-
-- `status = 'visible'` 表示前台可见
-- `status = 'blocked'` 表示后台已下架
-
-### 8.4 `schedule_share_keys`
-
-关键字段：
-
-- `id`
-- `user_id`
-- `share_key`
-- `is_active`
-- `status`
-- `ban_reason`
-- `banned_at`
-- `last_imported_at`
-
-说明：
-
-- 用户层面的分享权限在 `users.share_status`
-- 单个密钥的停用状态在这里
-
-### 8.5 `user_subscriptions`
-
-关键字段：
-
-- `id`
-- `user_id`
-- `template_id`
-- `page_path`
-- `remind_minutes`
-- `remind_weekends`
-- `remaining_count`
-- `status`
-- `last_subscribed_at`
-
-### 8.6 `reminders`
-
-关键字段：
-
-- `id`
-- `user_id`
-- `course_id`
-- `remind_time`
-- `status`
-- `error_msg`
-
-说明：
-
-- 用于提醒去重、发送状态跟踪和失败记录
-
-## 9. 云函数现状
-
-当前与权限和登录最相关的云函数：
-
-- `db-query`
-- `user-getOrCreate`
-- `login`
-
-其中：
-
-- `db-query` 已加入账号、笔记权限、分享权限的真实拦截
-- `user-getOrCreate` 已加入账号封禁校验
-
-如果后续修改了这两个函数，本地代码改完还不够，必须重新部署到 CloudBase。
-
-建议命令：
-
-```powershell
-npx mcporter call cloudbase.auth action=set_env envId=dawdawd15-8g023nsw8cb3f68a --output json
-npx mcporter call cloudbase.updateFunctionCode name=db-query functionRootPath='E:\codebese1\miniprogram\cloudfunctions' --output json
-npx mcporter call cloudbase.updateFunctionCode name=user-getOrCreate functionRootPath='E:\codebese1\miniprogram\cloudfunctions' --output json
-```
-
-## 10. 二开时最容易踩的坑
-
-### 10.1 不要只改后端 API
-
-这个项目不是所有业务都走 `backend/`。
-
-很多小程序能力直接通过 `db-query` 云函数写数据库，所以：
-
-- 如果只改 `backend/`，用户端可能完全不受影响
-- 涉及登录、笔记、分享密钥、导入、课表写入时，要同时看小程序和云函数
-
-### 10.2 不要只看 TypeORM 实体猜线上结构
-
-虽然当前实体已经比之前更接近线上真实结构，但涉及生产修改前，仍建议先对真实 CloudBase 表结构做一次核对。
-
-### 10.3 不要忽略 CloudBase 线上状态
-
-涉及数据库表、云函数、提醒逻辑时，建议先执行：
-
-```powershell
-npx mcporter describe cloudbase
-npx mcporter call cloudbase.auth action=status --output json
-npx mcporter call cloudbase.auth action=set_env envId=dawdawd15-8g023nsw8cb3f68a --output json
-npx mcporter call cloudbase.executeReadOnlySQL "sql=SHOW TABLES" --output json
-```
-
-### 10.4 小程序真实使用的是 JS 文件
-
-仓库里有一些 TS 文件，但当前小程序实际跑的很多入口是 JS 版本。
+### 8.4 后台菜单缺失通常不是功能没了
 
 优先检查：
 
-- `pages/login/login.js`
-- `pages/notes/notes.js`
-- `pages/settings/settings.js`
-- `pages/import/import.js`
+- 当前登录管理员角色
+- `permission_json`
+- 浏览器缓存中的旧 `admin_profile`
+- `/admin/profile` 返回是否正确
 
-## 11. 当前已完成的阶段性成果
+## 9. 推荐阅读顺序
 
-截至 2026-03-19，已经落地并验证过的关键能力：
+1. 本文档
+2. [API 接口文档](./api-reference.md)
+3. [数据库开源结构说明](./database-open-source.md)
+4. [宝塔部署教程](./backend-deployment.md)
+5. [测试用例文档](./test-cases.md)
 
-- 公告后台发布、删除、前台显示
-- 提醒功能数据库补齐与逻辑修复
-- 后台字体和整体布局重整
-- 用户详情页与完整课表查看
-- 账号封禁、笔记权限封禁、分享密钥权限封禁
-- 违规笔记下架 / 恢复
-- 分享密钥禁用 / 恢复
-- 小程序登录与数据库写入侧权限拦截
+## 10. 一句话建议
 
-## 12. 后续推荐扩展方向
-
-如果继续二开，建议优先做这些：
-
-1. 管理员登录与操作审计
-2. 封禁日志表
-3. 云函数 SQL 白名单化，减少任意 SQL 风险
-4. 提醒发送日志查询页
-5. 公告历史与定时发布
-6. 后台分页、筛选增强、导出
-
-## 13. 最后建议
-
-后续开发最重要的一点不是“先写代码”，而是先确认这次要改的链路到底跑在：
+这个项目最重要的不是“先写代码”，而是先确认你要改的是：
 
 - 小程序页面
-- 云函数
+- CloudBase 云函数
 - 后端 API
-- 后台管理台
-- 还是 CloudBase 真实数据结构
+- 管理后台
+- 还是 CloudBase 线上真实数据库
 
-这个项目最大的历史问题不是代码写不出来，而是“本地认知”和“线上真实状态”经常不一致。先核实，再开发，效率会更高，回归成本也更低。
+确认链路，再动手，返工会少很多。

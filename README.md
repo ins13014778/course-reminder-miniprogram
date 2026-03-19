@@ -1,38 +1,35 @@
 # 课表提醒项目
 
-这是一个基于 CloudBase 的多端项目，当前包含：
+这是一个基于 CloudBase 的多端项目，当前仓库包含：
 
-- `miniprogram/`: 微信小程序端
-- `backend/`: NestJS API 与后台管理接口
-- `admin/`: Vue 3 + Vite 管理后台
-- `docs/`: 项目文档、交接说明与测试用例
+- `miniprogram/`：微信小程序
+- `backend/`：NestJS API 与提醒调度服务
+- `admin/`：Vue 3 + Vite 管理后台
+- `database/`：数据库迁移与开源结构文件
+- `docs/`：开发交接、API、部署与测试文档
 
-## 推荐先看
+## 当前已落地能力
 
-后续接手或二开时，优先阅读以下文档：
+- 微信登录与用户资料初始化
+- 课表导入、维护、分享导入
+- 课前订阅提醒
+- 公告发布与前端展示
+- 笔记、笔记分享、举报、反馈闭环
+- 后台管理员登录、角色分级、细粒度权限控制
+- 后台用户治理、封号、封笔记、封分享
+- 提醒发送日志、后台审计日志
 
-- [开发交接文档](./docs/developer-handoff.md)
-- [测试用例文档](./docs/test-cases.md)
+## 真实运行环境
 
-## 独立后端仓库
+- CloudBase `envId`：`dawdawd15-8g023nsw8cb3f68a`
+- CloudBase `alias`：`dawdawd15`
+- Region：`ap-shanghai`
 
-为了方便宝塔部署，后端已经单独拆分为独立 GitHub 仓库：
-
-- [course-reminder-backend](https://github.com/ins13014778/course-reminder-backend)
-
-这个仓库内已经包含：
-
-- 独立后端代码
-- `.env.example`
-- PM2 启动配置
-- 宝塔 Nginx 反向代理示例
-- 独立部署 README
-
-如果你要把后端单独部署到服务器，优先使用这个独立仓库。
+当前数据库结构、管理员权限表、反馈表、内容页表、提醒日志表等，都以 CloudBase 线上真实结构为准，不要只看旧 SQL 草稿。
 
 ## 本地启动
 
-后端 API：
+后端：
 
 ```powershell
 cd E:\codebese1\backend
@@ -40,7 +37,7 @@ npm install
 npm run start:dev
 ```
 
-后台管理页：
+后台：
 
 ```powershell
 cd E:\codebese1\admin
@@ -50,23 +47,56 @@ npm run dev
 
 访问地址：
 
-- Admin: `http://localhost:5173`
-- Backend API: `http://localhost:3000`
+- 后台：`http://localhost:5173`
+- API：`http://localhost:3000`
 
-## 当前重点能力
+## 开发与部署文档
 
-- 用户登录与资料存储
-- 课表导入、编辑、分享导入
-- 订阅提醒
-- 公告发布
-- 后台治理能力
-  - 查看用户详情与完整课表
-  - 账号封禁
-  - 笔记权限封禁
-  - 分享密钥权限封禁
-  - 违规笔记下架 / 恢复
-  - 分享密钥禁用 / 恢复
+- [开发交接文档](./docs/developer-handoff.md)
+- [API 接口文档](./docs/api-reference.md)
+- [宝塔部署教程](./docs/backend-deployment.md)
+- [数据库开源结构说明](./docs/database-open-source.md)
+- [测试用例文档](./docs/test-cases.md)
 
-## 说明
+## 开源数据库结构
 
-仓库里存在一些历史文档和早期结构说明，它们不一定与当前线上 CloudBase 真实状态完全一致。涉及数据库、云函数、权限和提醒逻辑时，请以 [开发交接文档](./docs/developer-handoff.md) 为准，再结合真实 CloudBase 环境核对。
+本仓库已附带不含任何生产数据的开源结构文件：
+
+- [database/open-source-schema.sql](./database/open-source-schema.sql)
+
+该文件基于 `2026-03-19` 对 CloudBase 线上 MySQL 执行 `SHOW CREATE TABLE` 整理而成，只保留表结构、索引、字段，不包含任何用户数据。
+
+## 开源 API 说明
+
+当前后端接口已经随仓库开源，主要分为：
+
+- 小程序与前台接口
+- 后台管理接口
+- 内容页与公告接口
+
+完整清单见：
+
+- [docs/api-reference.md](./docs/api-reference.md)
+
+## 宝塔部署建议
+
+如果你要部署完整项目，推荐分为两部分：
+
+1. 后端 `backend/` 用 PM2 常驻，Nginx 反代到 API 域名
+2. 后台 `admin/` 构建后作为静态站点部署到宝塔站点目录
+
+完整步骤见：
+
+- [docs/backend-deployment.md](./docs/backend-deployment.md)
+- [backend/README.md](./backend/README.md)
+
+## 维护原则
+
+- 涉及数据库前，优先核对 CloudBase 线上真实表结构
+- 涉及云函数前，确认是否需要重新部署到 CloudBase
+- 涉及后台权限时，优先核对 `admin_accounts.permission_json`
+- 不要把生产数据提交到 GitHub
+
+## 当前仓库说明
+
+这个仓库当前作为主仓库继续维护。后续如果拆分子仓库部署，也建议以本仓库中的文档为主线来源。
