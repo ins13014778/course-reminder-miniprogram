@@ -1,0 +1,72 @@
+<view class="page-shell">
+  <view class="hero-card">
+    <text class="eyebrow">FEEDBACK</text>
+    <text class="hero-title">留言反馈</text>
+    <text class="hero-sub">如果你有功能建议、体验意见或发现问题，可以在这里直接提交给后台。</text>
+  </view>
+
+  <view class="panel-card">
+    <text class="panel-title">提交反馈</text>
+
+    <view class="field-block">
+      <text class="field-label">反馈分类</text>
+      <picker mode="selector" range="{{categories}}" value="{{categoryIndex}}" bindchange="onCategoryChange">
+        <view class="picker-card">
+          <text class="picker-value">{{categories[categoryIndex]}}</text>
+          <text class="picker-arrow">›</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="field-block">
+      <text class="field-label">反馈标题</text>
+      <input
+        class="text-input"
+        placeholder="例如：希望增加考试周模式"
+        value="{{title}}"
+        maxlength="120"
+        bindinput="onTitleInput"
+      />
+    </view>
+
+    <view class="field-block">
+      <text class="field-label">详细内容</text>
+      <textarea
+        class="text-area"
+        placeholder="请尽量描述清楚你的建议、问题或优化想法。"
+        value="{{content}}"
+        maxlength="1000"
+        bindinput="onContentInput"
+      />
+    </view>
+
+    <view class="field-block">
+      <text class="field-label">联系方式（可选）</text>
+      <input
+        class="text-input"
+        placeholder="可填写微信号、QQ、邮箱，方便回访"
+        value="{{contact}}"
+        maxlength="100"
+        bindinput="onContactInput"
+      />
+    </view>
+
+    <view class="submit-btn" bindtap="onSubmit">{{loading ? '提交中...' : '提交反馈'}}</view>
+  </view>
+
+  <view class="panel-card">
+    <text class="panel-title">最近提交</text>
+    <view wx:if="{{records.length}}" class="record-list">
+      <view class="record-item" wx:for="{{records}}" wx:key="id">
+        <view class="record-top">
+          <text class="record-title">{{item.title}}</text>
+          <text class="record-status">{{statusLabel(item.status)}}</text>
+        </view>
+        <text class="record-meta">{{categoryLabel(item.category)}} · {{item.created_at}}</text>
+        <text class="record-content">{{item.content}}</text>
+        <text wx:if="{{item.admin_note}}" class="record-note">后台备注：{{item.admin_note}}</text>
+      </view>
+    </view>
+    <view wx:else class="empty-state">你还没有提交过反馈。</view>
+  </view>
+</view>

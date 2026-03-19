@@ -1,17 +1,18 @@
 <template>
-  <div class="console-shell">
+  <RouterView v-if="route.meta.public" />
+  <div v-else class="console-shell">
     <aside class="console-sidebar">
       <div class="brand-card">
         <div class="brand-kicker">Campus Governance Console</div>
         <div class="brand-title">课表提醒后台</div>
         <p class="brand-copy">
-          面向真实运营场景的管理台，统一查看用户、课表、笔记、分享密钥、公告与提醒授权，并直接执行权限处置。
+          面向真实运营场景的管理台，统一查看用户、课表、笔记、分享、举报、公告与提醒权限，并直接执行治理动作。
         </p>
       </div>
 
       <nav class="nav-stack">
         <RouterLink
-          v-for="item in navItems"
+          v-for="item in visibleNavItems"
           :key="item.path"
           :to="item.path"
           class="nav-link"
@@ -35,7 +36,13 @@
           <div class="page-kicker">Operations Mode</div>
           <h1>{{ currentTitle }}</h1>
         </div>
-        <div class="header-badge">全量权限治理</div>
+
+        <div class="header-actions">
+          <div class="header-badge">{{ adminProfile?.roleLabel || '后台管理员' }}</div>
+          <el-button plain @click="logout">
+            {{ adminProfile?.email || '退出登录' }}
+          </el-button>
+        </div>
       </header>
 
       <RouterView />
@@ -44,8 +51,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { RouterLink, RouterView, useRoute } from 'vue-router'
+import { computed, onMounted } from 'vue'
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import {
   Bell,
   Collection,
@@ -55,19 +62,30 @@ import {
   Notebook,
   Share,
   User,
+  WarningFilled,
 } from '@element-plus/icons-vue'
+import { authApi } from './api'
+import { clearAdminSession, getAdminProfile, hasAdminPermission, hasAdminRole, setAdminProfile } from './utils/auth'
 
 const route = useRoute()
+const router = useRouter()
 
 const navItems = [
   { path: '/overview', label: '总览', icon: DataAnalysis },
-  { path: '/users', label: '用户治理', icon: User },
-  { path: '/courses', label: '课表巡检', icon: Collection },
+  { path: '/users', label: '用户治理', icon: User, permissions: ['user.view'] },
+  { path: '/courses', label: '课表巡检', icon: Collection, permissions: ['course.view'] },
   { path: '/template-courses', label: '模板课表', icon: Notebook },
-  { path: '/shares', label: '分享密钥', icon: Share },
-  { path: '/subscriptions', label: '订阅提醒', icon: Bell },
-  { path: '/notes', label: '笔记审核', icon: Memo },
-  { path: '/announcements', label: '公告运营', icon: Document },
+  { path: '/shares', label: '课表分享', icon: Share, permissions: ['share.view'] },
+  { path: '/subscriptions', label: '订阅提醒', icon: Bell, permissions: ['subscription.view'] },
+  { path: '/reminder-logs', label: '提醒日志', icon: Bell, permissions: ['reminder_log.view'] },
+  { path: '/notes', label: '笔记审核', icon: Memo, permissions: ['note.view'] },
+  { path: '/note-shares', label: '笔记分享', icon: Share, permissions: ['note_share.view'] },
+  { path: '/reports', label: '内容举报', icon: WarningFilled, permissions: ['report.view'] },
+  { path: '/feedback', label: '留言反馈', icon: Memo, permissions: ['feedback.view'] },
+  { path: '/announcements', label: '公告运营', icon: Document, permissions: ['announcement.manage'] },
+  { path: '/content-pages', label: '页面配置', icon: Document, permissions: ['content.manage'] },
+  { path: '/audit-logs', label: '审计日志', icon: Document, permissions: ['audit.view'] },
+  { path: '/admin-accounts', label: '管理员', icon: User, permissions: ['admin.manage'] },
 ]
 
 const titleMap: Record<string, string> = {
@@ -75,13 +93,43 @@ const titleMap: Record<string, string> = {
   '/users': '用户与权限治理',
   '/courses': '用户课表巡检',
   '/template-courses': '模板课表资产',
-  '/shares': '分享密钥控制',
+  '/shares': '课表分享密钥控制',
   '/subscriptions': '订阅提醒状态',
+  '/reminder-logs': '提醒发送日志',
   '/notes': '笔记内容审核',
+  '/note-shares': '笔记分享管理',
+  '/reports': '内容举报审核',
+  '/feedback': '用户留言反馈',
   '/announcements': '公告发布管理',
+  '/content-pages': '页面内容配置',
+  '/audit-logs': '后台审计日志',
+  '/admin-accounts': '管理员账号权限',
 }
 
+const visibleNavItems = computed(() =>
+  navItems.filter((item) => hasAdminRole(item.roles) && hasAdminPermission(item.permissions)),
+)
 const currentTitle = computed(() => titleMap[route.path] || '课表提醒后台')
+const adminProfile = computed(() => getAdminProfile())
+
+function logout() {
+  clearAdminSession()
+  router.replace('/login')
+}
+
+async function refreshAdminProfile() {
+  if (route.meta.public) return
+
+  try {
+    const res = await authApi.getProfile()
+    setAdminProfile(res.data)
+  } catch {
+    clearAdminSession()
+    router.replace('/login')
+  }
+}
+
+onMounted(refreshAdminProfile)
 </script>
 
 <style>
@@ -90,7 +138,6 @@ const currentTitle = computed(() => titleMap[route.path] || '课表提醒后台'
 :root {
   --bg-main: #f3eee3;
   --bg-soft: rgba(251, 248, 241, 0.84);
-  --bg-strong: #fbf8f1;
   --line-soft: rgba(146, 98, 71, 0.18);
   --ink-main: #21352b;
   --ink-soft: #667166;
@@ -125,9 +172,10 @@ a {
 }
 
 .console-shell {
-  min-height: 100vh;
+  height: 100vh;
   display: grid;
   grid-template-columns: 292px minmax(0, 1fr);
+  overflow: hidden;
 }
 
 .console-sidebar {
@@ -138,13 +186,13 @@ a {
   flex-direction: column;
   gap: 22px;
   padding: 24px 20px;
+  overflow-y: auto;
   background: linear-gradient(180deg, rgba(251, 248, 241, 0.94), rgba(243, 236, 225, 0.88));
   border-right: 1px solid var(--line-soft);
 }
 
 .brand-card,
 .sidebar-status,
-.console-panel,
 .surface-card {
   border: 1px solid var(--line-soft);
   background: var(--bg-soft);
@@ -233,6 +281,8 @@ a {
 }
 
 .console-main {
+  height: 100vh;
+  overflow-y: auto;
   padding: 28px;
 }
 
@@ -250,6 +300,14 @@ a {
   line-height: 1;
   font-family: 'Source Serif 4', serif;
   letter-spacing: 0.01em;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .header-badge {
@@ -552,15 +610,20 @@ a {
 
 @media (max-width: 980px) {
   .console-shell {
+    height: auto;
     grid-template-columns: 1fr;
+    overflow: visible;
   }
 
   .console-sidebar {
     position: static;
     height: auto;
+    overflow: visible;
   }
 
   .console-main {
+    height: auto;
+    overflow: visible;
     padding: 20px;
   }
 

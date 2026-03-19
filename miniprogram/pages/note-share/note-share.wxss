@@ -1,0 +1,269 @@
+.page-shell {
+  min-height: 100vh;
+  padding: 24rpx 24rpx 56rpx;
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at top left, rgba(46, 107, 91, 0.12), transparent 28%),
+    linear-gradient(180deg, #fffdf8 0%, #f2efe7 100%);
+}
+
+.hero-card,
+.note-card,
+.empty-card,
+.editor-panel {
+  border-radius: 28rpx;
+  border: 1rpx solid rgba(30, 59, 47, 0.08);
+  background: rgba(255, 251, 245, 0.94);
+  box-shadow: 0 18rpx 42rpx rgba(53, 44, 30, 0.08);
+}
+
+.hero-card {
+  padding: 28rpx;
+}
+
+.eyebrow,
+.editor-eyebrow {
+  display: block;
+  font-size: 18rpx;
+  letter-spacing: 6rpx;
+  color: #2e6b5b;
+}
+
+.hero-title {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 52rpx;
+  line-height: 1.04;
+  color: #1e2b23;
+  font-weight: 700;
+}
+
+.hero-sub {
+  display: block;
+  margin-top: 14rpx;
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: #857a67;
+}
+
+.empty-card {
+  margin-top: 20rpx;
+  padding: 46rpx 28rpx;
+  text-align: center;
+}
+
+.empty-mark {
+  display: block;
+  font-size: 20rpx;
+  letter-spacing: 6rpx;
+  color: #c96f3b;
+}
+
+.empty-title {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 30rpx;
+  color: #1e2b23;
+  font-weight: 700;
+}
+
+.empty-sub {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: #857a67;
+  line-height: 1.7;
+}
+
+.note-card {
+  margin-top: 20rpx;
+  padding: 24rpx;
+}
+
+.note-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.author-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.author-avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: #ddd5c9;
+}
+
+.author-avatar.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1e3b2f;
+  color: #fff8ef;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.author-name {
+  display: block;
+  font-size: 28rpx;
+  color: #1e2b23;
+  font-weight: 700;
+}
+
+.note-time {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #8c8374;
+}
+
+.view-chip {
+  align-self: flex-start;
+  min-height: 50rpx;
+  padding: 0 18rpx;
+  border-radius: 999rpx;
+  display: inline-flex;
+  align-items: center;
+  background: rgba(46, 107, 91, 0.12);
+  color: #2e6b5b;
+  font-size: 22rpx;
+}
+
+.note-content {
+  display: block;
+  margin-top: 18rpx;
+  font-size: 28rpx;
+  line-height: 1.7;
+  color: #27352d;
+  white-space: pre-wrap;
+}
+
+.note-image {
+  width: 100%;
+  margin-top: 18rpx;
+  border-radius: 20rpx;
+  background: #f1ece3;
+}
+
+.action-bar {
+  display: flex;
+  gap: 14rpx;
+  margin-top: 24rpx;
+}
+
+.action-btn {
+  flex: 1;
+  min-height: 88rpx;
+  border-radius: 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  font-weight: 700;
+  padding: 0 24rpx;
+  box-sizing: border-box;
+}
+
+.action-btn.primary {
+  background: #2e6b5b;
+  color: #fff8ef;
+}
+
+.action-btn.secondary {
+  background: rgba(30, 59, 47, 0.05);
+  color: #1e3b2f;
+  border: 1rpx solid rgba(30, 59, 47, 0.08);
+}
+
+.editor-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 27, 23, 0.42);
+  display: flex;
+  align-items: flex-end;
+  z-index: 20;
+}
+
+.editor-panel {
+  width: 100%;
+  padding: 28rpx 24rpx calc(32rpx + env(safe-area-inset-bottom));
+  border-radius: 30rpx 30rpx 0 0;
+  box-sizing: border-box;
+}
+
+.editor-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.editor-title {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 38rpx;
+  color: #1e2b23;
+  font-weight: 700;
+}
+
+.editor-close {
+  font-size: 46rpx;
+  color: #988f7f;
+}
+
+.reason-title {
+  margin-top: 22rpx;
+  font-size: 26rpx;
+  color: #1e2b23;
+  font-weight: 700;
+}
+
+.reason-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 18rpx;
+}
+
+.reason-chip {
+  min-height: 60rpx;
+  padding: 0 22rpx;
+  border-radius: 999rpx;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 59, 47, 0.05);
+  border: 1rpx solid rgba(30, 59, 47, 0.08);
+  color: #1e3b2f;
+  font-size: 24rpx;
+}
+
+.reason-chip.active {
+  background: rgba(201, 111, 59, 0.14);
+  border-color: rgba(201, 111, 59, 0.3);
+  color: #c96f3b;
+}
+
+.editor-textarea {
+  width: 100%;
+  height: 220rpx;
+  margin-top: 22rpx;
+  padding: 18rpx;
+  border-radius: 20rpx;
+  background: rgba(30, 59, 47, 0.04);
+  border: 1rpx solid rgba(30, 59, 47, 0.08);
+  box-sizing: border-box;
+  font-size: 28rpx;
+  color: #1e2b23;
+}
+
+.editor-actions {
+  display: flex;
+  gap: 14rpx;
+  margin-top: 18rpx;
+}

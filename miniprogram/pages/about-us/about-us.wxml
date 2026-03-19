@@ -1,0 +1,31 @@
+<view class="page-shell">
+  <view class="hero-card">
+    <text class="eyebrow">ABOUT US</text>
+    <text class="hero-title">{{title}}</text>
+    <text class="hero-sub">{{subtitle}}</text>
+  </view>
+
+  <view class="panel-card">
+    <text class="panel-title">产品介绍</text>
+    <text class="panel-copy">{{content}}</text>
+  </view>
+
+  <view class="panel-card" wx:if="{{version}}">
+    <text class="panel-title">版本信息</text>
+    <text class="panel-copy">当前版本：{{version}}</text>
+  </view>
+
+  <view class="panel-card" wx:if="{{contacts.length}}">
+    <text class="panel-title">联系方式</text>
+    <view class="contact-list">
+      <view class="contact-item" wx:for="{{contacts}}" wx:key="index">
+        <text class="contact-label">{{item.label}}</text>
+        <text class="contact-value">{{item.value}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="footer-card" wx:if="{{footer}}">
+    <text class="footer-copy">{{footer}}</text>
+  </view>
+</view>

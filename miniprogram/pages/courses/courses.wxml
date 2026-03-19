@@ -31,6 +31,10 @@
 
   <view wx:else class="course-stack">
     <view wx:if="{{usingTemplateSchedule}}" class="template-tip">当前显示的是默认模板课表，可在提醒设置中关闭。</view>
+    <view wx:if="{{conflictCount > 0}}" class="conflict-tip">
+      <text class="conflict-title">检测到 {{conflictCount}} 组课程冲突</text>
+      <text class="conflict-copy" wx:for="{{conflictTips}}" wx:key="index">{{item}}</text>
+    </view>
 
     <view wx:if="{{courses.length === 0}}" class="empty-card compact">
       <text class="empty-mark">REST</text>
@@ -47,7 +51,7 @@
       data-course="{{item}}"
       data-id="{{item.id}}"
     >
-      <view class="accent-bar" style="background: {{item.color}}"></view>
+      <view class="accent-bar" style="background: {{item.isConflict ? '#D35C3A' : item.color}}"></view>
       <view class="course-main">
         <view class="course-head">
           <view class="title-wrap">
@@ -62,6 +66,7 @@
           <text class="meta-chip">{{item.classroom || '待定地点'}}</text>
           <text class="meta-chip">第{{item.startWeek}}-{{item.endWeek}}周</text>
           <text wx:if="{{item.isTemplate}}" class="meta-chip">模板课表</text>
+          <text wx:if="{{item.isConflict}}" class="meta-chip conflict-chip">{{item.conflictLabel}}</text>
         </view>
       </view>
     </view>

@@ -1,0 +1,79 @@
+<view class="page-shell">
+  <view class="hero-card">
+    <text class="eyebrow">SHARED NOTE</text>
+    <text class="hero-title">笔记分享</text>
+    <text class="hero-sub">这里展示同学分享出来的课程笔记，你可以直接查看内容，也可以对违规内容发起举报。</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="empty-card">
+    <text class="empty-title">正在加载分享内容...</text>
+  </view>
+
+  <view wx:elif="{{unavailable}}" class="empty-card">
+    <text class="empty-mark">UNAVAILABLE</text>
+    <text class="empty-title">这个分享暂时不可用</text>
+    <text class="empty-sub">{{unavailableMessage}}</text>
+  </view>
+
+  <view wx:elif="{{note}}" class="note-card">
+    <view class="note-head">
+      <view class="author-wrap">
+        <image wx:if="{{note.avatarUrl}}" class="author-avatar" src="{{note.avatarUrl}}" mode="aspectFill" />
+        <view wx:else class="author-avatar placeholder">{{note.avatarLetter}}</view>
+        <view>
+          <text class="author-name">{{note.nickname}}</text>
+          <text class="note-time">{{note.school || '未填写学校'}} · {{note.updatedAt}}</text>
+        </view>
+      </view>
+
+      <view class="view-chip">已查看 {{note.viewCount}}</view>
+    </view>
+
+    <text class="note-content">{{note.content}}</text>
+    <image wx:if="{{note.imageUrl}}" class="note-image" src="{{note.imageUrl}}" mode="widthFix" />
+
+    <view class="action-bar">
+      <button wx:if="{{note.isOwner}}" class="action-btn primary" open-type="share">转发给好友</button>
+      <view wx:if="{{note.isOwner}}" class="action-btn secondary" bindtap="disableShare">停用分享</view>
+      <view wx:if="{{!note.isOwner}}" class="action-btn secondary" bindtap="openReportDialog">举报内容</view>
+    </view>
+  </view>
+
+  <view wx:if="{{reportVisible}}" class="editor-mask" bindtap="closeReportDialog">
+    <view class="editor-panel" catchtap="noop">
+      <view class="editor-top">
+        <view>
+          <text class="editor-eyebrow">REPORT</text>
+          <text class="editor-title">举报这条分享</text>
+        </view>
+        <text class="editor-close" bindtap="closeReportDialog">×</text>
+      </view>
+
+      <view class="reason-title">请选择举报原因</view>
+      <view class="reason-grid">
+        <view
+          wx:for="{{reportReasons}}"
+          wx:key="*this"
+          class="reason-chip {{reportReason === item ? 'active' : ''}}"
+          data-reason="{{item}}"
+          bindtap="chooseReason"
+        >
+          {{item}}
+        </view>
+      </view>
+
+      <textarea
+        class="editor-textarea"
+        maxlength="300"
+        placeholder="可以补充说明举报原因，帮助后台更快处理。"
+        value="{{reportDescription}}"
+        bindinput="onReportDescriptionInput"
+      />
+
+      <view class="editor-actions">
+        <view class="action-btn secondary" bindtap="closeReportDialog">取消</view>
+        <view class="action-btn primary" bindtap="submitReport">提交举报</view>
+      </view>
+    </view>
+  </view>
+</view>

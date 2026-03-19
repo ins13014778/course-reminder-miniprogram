@@ -1,0 +1,2 @@
+ALTER TABLE `admin_accounts`
+  ADD COLUMN `permission_json` LONGTEXT NULL AFTER `status`;

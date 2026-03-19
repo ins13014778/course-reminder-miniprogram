@@ -1,4 +1,11 @@
-const { getLoginToken, hasLoginSession, updateStoredUser, clearLoginSession } = require('../../utils/auth');
+const authService = require('../../services/auth');
+const {
+  getLoginToken,
+  hasLoginSession,
+  updateStoredUser,
+  clearLoginSession,
+  setLoginSession,
+} = require('../../utils/auth');
 
 Page({
   data: {
@@ -59,7 +66,32 @@ Page({
   },
 
   goToLogin() {
-    wx.navigateTo({ url: '/pages/login/login' });
+    wx.getUserProfile({
+      desc: '用于保存你的个人资料与课表信息',
+      success: async (res) => {
+        wx.showLoading({ title: '登录中...' });
+
+        try {
+          const result = await authService.authService.login(res.userInfo || {});
+          setLoginSession(result.user, result.token);
+
+          wx.hideLoading();
+          wx.showToast({ title: '登录成功', icon: 'success' });
+          this.loadUserInfo();
+        } catch (error) {
+          wx.hideLoading();
+          wx.showToast({
+            title: (error && error.message) || '登录失败',
+            icon: 'none',
+          });
+          console.error('[Profile] 登录失败:', error);
+        }
+      },
+      fail: (err) => {
+        console.error('[Profile] 获取用户信息失败:', err);
+        wx.showToast({ title: '用户拒绝授权', icon: 'none' });
+      },
+    });
   },
 
   promptField(title, placeholderText, field, currentValue) {
@@ -218,5 +250,8 @@ Page({
   goToImport() { wx.switchTab({ url: '/pages/import/import' }); },
   goToProfile() {},
   goToNotes() { wx.navigateTo({ url: '/pages/notes/notes' }); },
-  goToSettings() { wx.navigateTo({ url: '/pages/settings/settings' }); }
+  goToSettings() { wx.navigateTo({ url: '/pages/settings/settings' }); },
+  goToNotificationCenter() { wx.navigateTo({ url: '/pages/notification-center/notification-center' }); },
+  goToAboutUs() { wx.navigateTo({ url: '/pages/about-us/about-us' }); },
+  goToFeedback() { wx.navigateTo({ url: '/pages/feedback/feedback' }); }
 });

@@ -118,7 +118,13 @@ function enforcePermissions(sql, callerUser) {
 
   if (
     isBanActive(callerUser.share_status, callerUser.share_banned_until) &&
-    (touchesTable(sql, 'schedule_share_keys') || /\bshare_key\b/i.test(sql))
+    isWriteSql(sql) &&
+    (
+      touchesTable(sql, 'schedule_share_keys') ||
+      touchesTable(sql, 'note_shares') ||
+      /\bshare_key\b/i.test(sql) ||
+      /\bshare_code\b/i.test(sql)
+    )
   ) {
     throw new Error(
       formatBanMessage('分享密钥权限', callerUser.share_banned_until, callerUser.share_ban_reason),

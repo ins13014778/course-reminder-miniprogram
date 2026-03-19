@@ -2,13 +2,13 @@
   <view class="hero-card">
     <text class="eyebrow">NOTES</text>
     <text class="hero-title">课程笔记</text>
-    <text class="hero-sub">随手记录课堂要点、作业提醒和灵感，支持图片和正文。</text>
+    <text class="hero-sub">随手记录课堂重点、作业提醒和灵感，支持图片正文，也支持把自己的笔记分享出去。</text>
   </view>
 
   <view class="toolbar-card">
     <view class="toolbar-copy">
       <text class="toolbar-title">你的学习记录</text>
-      <text class="toolbar-sub">{{isLoggedIn ? '可以发布、修改和删除自己发的笔记。' : '登录后即可发布自己的笔记。'}}</text>
+      <text class="toolbar-sub">{{isLoggedIn ? '你可以发布、修改、删除并分享自己的笔记。' : '登录后即可发布和分享自己的笔记。'}}</text>
     </view>
     <view class="cta-button cta-primary toolbar-btn" bindtap="openAddEditor">发笔记</view>
   </view>
@@ -19,8 +19,8 @@
 
   <view wx:elif="{{notes.length === 0}}" class="empty-card">
     <text class="empty-mark">NOTE</text>
-    <text class="empty-title">还没有人发布笔记</text>
-    <text class="empty-sub">你可以先发第一条，把这门课的重要内容记下来。</text>
+    <text class="empty-title">你还没有发布笔记</text>
+    <text class="empty-sub">先写一条课程重点，后面就能一键分享给同学。</text>
   </view>
 
   <view wx:else class="note-stack">
@@ -36,6 +36,10 @@
         </view>
 
         <view wx:if="{{item.isMine}}" class="note-actions">
+          <text class="note-link" bindtap="openSharePage" data-id="{{item.id}}">
+            {{item.shareStatus === 'active' ? '查看分享' : '去分享'}}
+          </text>
+          <text wx:if="{{item.shareStatus === 'active'}}" class="note-link" bindtap="disableShare" data-id="{{item.id}}">停用</text>
           <text class="note-link" bindtap="openEditEditor" data-note="{{item}}">编辑</text>
           <text class="note-link danger" bindtap="onDeleteNote" data-id="{{item.id}}">删除</text>
         </view>
@@ -43,6 +47,12 @@
 
       <text class="note-content">{{item.content}}</text>
       <image wx:if="{{item.imageUrl}}" class="note-image" src="{{item.imageUrl}}" mode="widthFix" />
+
+      <view class="note-meta">
+        <text class="meta-chip {{item.shareStatus === 'active' ? 'active' : ''}}">
+          {{item.shareStatus === 'active' ? '分享已开启' : '未开启分享'}}
+        </text>
+      </view>
     </view>
   </view>
 

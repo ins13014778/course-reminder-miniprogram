@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
 import { AdminModule } from './admin/admin.module';
 import { CoursesModule } from './courses/courses.module';
+import { ContentPagesModule } from './content-pages/content-pages.module';
 import { ImportModule } from './import/import.module';
 import { RemindersModule } from './reminders/reminders.module';
 
@@ -29,6 +30,7 @@ import { RemindersModule } from './reminders/reminders.module';
     AdminModule,
     AnnouncementsModule,
     CoursesModule,
+    ContentPagesModule,
     ImportModule,
     RemindersModule,
   ],

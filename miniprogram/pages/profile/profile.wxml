@@ -123,12 +123,16 @@
         <text class="menu-label">提醒设置</text>
         <text class="menu-arrow">›</text>
       </view>
-      <view class="menu-item">
+      <view class="menu-item" bindtap="goToNotificationCenter">
         <text class="menu-label">通知管理</text>
         <text class="menu-arrow">›</text>
       </view>
-      <view class="menu-item">
+      <view class="menu-item" bindtap="goToAboutUs">
         <text class="menu-label">关于我们</text>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-item" bindtap="goToFeedback">
+        <text class="menu-label">留言反馈</text>
         <text class="menu-arrow">›</text>
       </view>
     </view>

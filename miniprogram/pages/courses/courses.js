@@ -135,7 +135,66 @@ function formatCourseForView(course, color) {
     periodKey: slotInfo.periodKey,
     periodLabel: slotInfo.periodLabel,
     timeLabel: buildTimeLabel(course),
-    sectionLabel: slotInfo.slot.label
+    sectionLabel: slotInfo.slot.label,
+    isConflict: false,
+    conflictLabel: ''
+  };
+}
+
+function toMinuteValue(timeText, fallbackSection, sectionOffset) {
+  const normalized = normalizeTimeValue(timeText);
+  if (isValidTimeValue(normalized)) {
+    const [hour, minute] = normalized.split(':').map(Number);
+    return hour * 60 + minute;
+  }
+
+  return fallbackSection * 100 + sectionOffset;
+}
+
+function rangesOverlap(aStart, aEnd, bStart, bEnd) {
+  return aStart <= bEnd && bStart <= aEnd;
+}
+
+function detectCourseConflicts(courses) {
+  const courseMap = new Map();
+  const conflicts = [];
+
+  courses.forEach((course) => {
+    courseMap.set(course.id, { ...course, isConflict: false, conflictLabel: '' });
+  });
+
+  for (let i = 0; i < courses.length; i += 1) {
+    for (let j = i + 1; j < courses.length; j += 1) {
+      const current = courses[i];
+      const next = courses[j];
+
+      if (!rangesOverlap(current.startWeek, current.endWeek, next.startWeek, next.endWeek)) {
+        continue;
+      }
+
+      const currentStart = toMinuteValue(current.startTime, current.startSection, 0);
+      const currentEnd = toMinuteValue(current.endTime, current.endSection, 99);
+      const nextStart = toMinuteValue(next.startTime, next.startSection, 0);
+      const nextEnd = toMinuteValue(next.endTime, next.endSection, 99);
+
+      if (!rangesOverlap(currentStart, currentEnd, nextStart, nextEnd)) {
+        continue;
+      }
+
+      conflicts.push(`${current.courseName} / ${next.courseName}`);
+
+      const currentTarget = courseMap.get(current.id);
+      const nextTarget = courseMap.get(next.id);
+      currentTarget.isConflict = true;
+      nextTarget.isConflict = true;
+      currentTarget.conflictLabel = currentTarget.conflictLabel || `与 ${next.courseName} 冲突`;
+      nextTarget.conflictLabel = nextTarget.conflictLabel || `与 ${current.courseName} 冲突`;
+    }
+  }
+
+  return {
+    courses: courses.map((course) => courseMap.get(course.id) || course),
+    conflictTips: conflicts
   };
 }
 
@@ -175,7 +234,9 @@ Page({
     editorVisible: false,
     editorMode: 'add',
     editorTitle: '添加课程',
-    editorCourse: createEditorState(null)
+    editorCourse: createEditorState(null),
+    conflictCount: 0,
+    conflictTips: []
   },
 
   onLoad() {
@@ -272,13 +333,20 @@ Page({
       },
       success: (res) => {
         const rows = res.result && res.result.success ? res.result.data : [];
-        const courses = (rows || []).map((course, index) =>
+        const rawCourses = (rows || []).map((course, index) =>
           formatCourseForView(course, this.data.colors[index % this.data.colors.length])
         );
-        this.setData({ courses, loading: false, usingTemplateSchedule: true });
+        const conflictResult = detectCourseConflicts(rawCourses);
+        this.setData({
+          courses: conflictResult.courses,
+          conflictCount: conflictResult.conflictTips.length,
+          conflictTips: conflictResult.conflictTips,
+          loading: false,
+          usingTemplateSchedule: true
+        });
       },
       fail: () => {
-        this.setData({ courses: [], loading: false, usingTemplateSchedule: false });
+        this.setData({ courses: [], conflictCount: 0, conflictTips: [], loading: false, usingTemplateSchedule: false });
       }
     });
   },
@@ -324,13 +392,20 @@ Page({
       },
       success: (res) => {
         const rows = res.result && res.result.success ? res.result.data : [];
-        const courses = (rows || []).map((course, index) =>
+        const rawCourses = (rows || []).map((course, index) =>
           formatCourseForView(course, course.color || this.data.colors[index % this.data.colors.length])
         );
-        this.setData({ courses, loading: false, usingTemplateSchedule: false });
+        const conflictResult = detectCourseConflicts(rawCourses);
+        this.setData({
+          courses: conflictResult.courses,
+          conflictCount: conflictResult.conflictTips.length,
+          conflictTips: conflictResult.conflictTips,
+          loading: false,
+          usingTemplateSchedule: false
+        });
       },
       fail: () => {
-        this.setData({ courses: [], loading: false, usingTemplateSchedule: false });
+        this.setData({ courses: [], conflictCount: 0, conflictTips: [], loading: false, usingTemplateSchedule: false });
         wx.showToast({ title: '加载失败', icon: 'none' });
       }
     });
@@ -488,11 +563,40 @@ Page({
       endTime: useCustomTime ? endTime : null
     };
 
-    if (editor.id) {
-      this.updateCourse(editor.id, payload);
-    } else {
-      this.addCourse(payload);
+    this.confirmConflictAndSave(editor.id, payload);
+  },
+
+  confirmConflictAndSave(id, payload) {
+    const draftCourse = {
+      id: id || `draft-${Date.now()}`,
+      courseName: payload.courseName,
+      startSection: payload.startSection,
+      endSection: payload.endSection,
+      startWeek: payload.startWeek,
+      endWeek: payload.endWeek,
+      startTime: payload.startTime,
+      endTime: payload.endTime
+    };
+    const siblingCourses = (this.data.courses || []).filter((item) => item.id !== id);
+    const conflictResult = detectCourseConflicts([...siblingCourses, draftCourse]);
+    const draft = conflictResult.courses.find((item) => item.id === draftCourse.id);
+
+    if (draft && draft.isConflict) {
+      wx.showModal({
+        title: '检测到课程冲突',
+        content: `${payload.courseName} 与当前这一天已有课程时间重叠，是否仍然保存？`,
+        confirmText: '仍然保存',
+        success: (res) => {
+          if (!res.confirm) return;
+          if (id) this.updateCourse(id, payload);
+          else this.addCourse(payload);
+        }
+      });
+      return;
     }
+
+    if (id) this.updateCourse(id, payload);
+    else this.addCourse(payload);
   },
 
   addCourse(payload) {

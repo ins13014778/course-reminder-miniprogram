@@ -3,10 +3,8 @@
     <section class="hero-panel">
       <div>
         <div class="section-kicker">Notes Moderation</div>
-        <h2>后台直接查看已发布笔记内容，并对违规笔记执行下架或恢复。</h2>
-        <p>
-          这里展示的就是用户已经写入数据库的笔记正文。你可以按内容、昵称、学校检索，并对单条笔记进行违规处置。
-        </p>
+        <h2>后台直接查看用户已发布的笔记正文，并对单条笔记执行下架或恢复。</h2>
+        <p>这里展示的是用户已经写入数据库的笔记内容。你可以按内容、昵称、学校检索，并对单条笔记进行违规处置。</p>
       </div>
       <div class="hero-side">
         <strong>{{ rows.length }}</strong>
@@ -48,7 +46,9 @@
           </el-table-column>
           <el-table-column label="图片" width="90">
             <template #default="{ row }">
-              <el-tag :type="row.image_url ? 'success' : 'info'">{{ row.image_url ? '有图' : '纯文字' }}</el-tag>
+              <el-tag :type="row.previewImageUrl ? 'success' : 'info'">
+                {{ row.previewImageUrl ? '有图' : '纯文字' }}
+              </el-tag>
             </template>
           </el-table-column>
           <el-table-column label="状态" width="100">
@@ -93,7 +93,7 @@
       </div>
     </section>
 
-    <el-dialog v-model="previewVisible" title="笔记内容预览" width="640px">
+    <el-dialog v-model="previewVisible" title="笔记内容预览" width="720px">
       <div v-if="selectedNote" class="stack-grid">
         <div class="detail-item">
           <strong>发布者</strong>
@@ -103,8 +103,19 @@
           <strong>内容</strong>
           <div class="note-preview">{{ selectedNote.content || '暂无内容' }}</div>
         </div>
+        <div v-if="selectedNote.previewImageUrl" class="detail-item">
+          <strong>笔记图片</strong>
+          <el-image
+            class="note-image"
+            :src="selectedNote.previewImageUrl"
+            :preview-src-list="[selectedNote.previewImageUrl]"
+            preview-teleported
+            fit="cover"
+          />
+          <div class="muted-text">点击图片可放大查看</div>
+        </div>
         <div v-if="selectedNote.image_url" class="detail-item">
-          <strong>图片 FileID</strong>
+          <strong>原始 FileID</strong>
           <span>{{ selectedNote.image_url }}</span>
         </div>
       </div>
@@ -117,6 +128,7 @@ import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { noteApi } from '../api'
 import { formatDateTime, trimText } from '../utils/format'
+import { resolveCloudFileUrl } from '../utils/cloud'
 
 const rows = ref<any[]>([])
 const loading = ref(true)
@@ -124,18 +136,25 @@ const keyword = ref('')
 const previewVisible = ref(false)
 const selectedNote = ref<any | null>(null)
 
+function normalizeRow(row: any) {
+  return {
+    ...row,
+    previewImageUrl: resolveCloudFileUrl(row.image_url),
+  }
+}
+
 async function loadData() {
   loading.value = true
   try {
     const res = await noteApi.getList({ keyword: keyword.value || undefined })
-    rows.value = res.data
+    rows.value = (res.data || []).map(normalizeRow)
   } finally {
     loading.value = false
   }
 }
 
 function previewNote(row: any) {
-  selectedNote.value = row
+  selectedNote.value = normalizeRow(row)
   previewVisible.value = true
 }
 
@@ -144,11 +163,15 @@ async function moderate(row: any, status: 'visible' | 'blocked') {
 
   try {
     if (status === 'blocked') {
-      const result = await ElMessageBox.prompt('请输入下架原因，用户侧会据此拦截违规内容。', '下架违规笔记', {
-        confirmButtonText: '确认下架',
-        cancelButtonText: '取消',
-        inputPlaceholder: '例如：广告引流、辱骂内容、违规图片',
-      })
+      const result = await ElMessageBox.prompt(
+        '请输入下架原因，用户侧会据此拦截违规内容。',
+        '下架违规笔记',
+        {
+          confirmButtonText: '确认下架',
+          cancelButtonText: '取消',
+          inputPlaceholder: '例如：广告引流、骚扰内容、违规图片',
+        },
+      )
       reason = result.value
     }
 
@@ -162,3 +185,12 @@ async function moderate(row: any, status: 'visible' | 'blocked') {
 
 onMounted(loadData)
 </script>
+
+<style scoped>
+.note-image {
+  width: 100%;
+  max-height: 360px;
+  border-radius: 18px;
+  border: 1px solid var(--line-soft);
+}
+</style>

@@ -93,6 +93,28 @@
   line-height: 1.6;
 }
 
+.conflict-tip {
+  padding: 18rpx 22rpx;
+  border-radius: 20rpx;
+  background: rgba(211, 92, 58, 0.12);
+  color: #9c4330;
+  font-size: 24rpx;
+  line-height: 1.7;
+}
+
+.conflict-title,
+.conflict-copy {
+  display: block;
+}
+
+.conflict-title {
+  font-weight: 700;
+}
+
+.conflict-copy + .conflict-copy {
+  margin-top: 6rpx;
+}
+
 .course-card {
   display: flex;
   overflow: hidden;
@@ -155,6 +177,11 @@
   background: rgba(46, 107, 91, 0.08);
   color: #476356;
   font-size: 22rpx;
+}
+
+.conflict-chip {
+  background: rgba(211, 92, 58, 0.12);
+  color: #9c4330;
 }
 
 .empty-card,

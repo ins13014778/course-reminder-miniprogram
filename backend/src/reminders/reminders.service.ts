@@ -4,6 +4,7 @@ import { LessThan, Repository } from 'typeorm';
 import { Reminder } from '../common/entities/reminder.entity';
 import { Course } from '../common/entities/course.entity';
 import { UserSubscription } from '../common/entities/user-subscription.entity';
+import { DataSource } from 'typeorm';
 
 type DueJob = {
   reminder: Reminder;
@@ -28,6 +29,7 @@ export class RemindersService {
     private courseRepository: Repository<Course>,
     @InjectRepository(UserSubscription)
     private subscriptionRepository: Repository<UserSubscription>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async createReminder(userId: number, courseId: number, remindTime: Date) {
@@ -56,6 +58,45 @@ export class RemindersService {
 
   async markAsFailed(id: number, errorMsg: string) {
     await this.reminderRepository.update(id, { status: 'failed', errorMsg });
+  }
+
+  async createSendLog(payload: {
+    reminderId: number;
+    userId: number;
+    courseId: number;
+    status: 'sent' | 'failed';
+    templateId?: string | null;
+    pagePath?: string | null;
+    courseName?: string | null;
+    startTime?: string | null;
+    location?: string | null;
+    remark?: string | null;
+    errorMessage?: string | null;
+    responseJson?: any;
+  }) {
+    try {
+      await this.dataSource.query(
+        `INSERT INTO reminder_send_logs
+          (reminder_id, user_id, course_id, status, template_id, page_path, course_name, start_time, location, remark, error_message, response_json, sent_at, _openid)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, '')`,
+        [
+          payload.reminderId,
+          payload.userId,
+          payload.courseId,
+          payload.status,
+          payload.templateId || null,
+          payload.pagePath || null,
+          payload.courseName || null,
+          payload.startTime || null,
+          payload.location || null,
+          payload.remark || null,
+          payload.errorMessage || null,
+          payload.responseJson ? JSON.stringify(payload.responseJson) : null,
+        ],
+      );
+    } catch (error) {
+      console.warn('[RemindersService] createSendLog failed', error?.message || error);
+    }
   }
 
   getCourseStartTime(course: Course | any) {
