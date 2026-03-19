@@ -219,6 +219,11 @@ npm run dev
 4. [宝塔部署教程](./backend-deployment.md)
 5. [测试用例文档](./test-cases.md)
 
+补充推荐：
+
+- [上线检查清单](./release-checklist.md)
+- [管理员权限矩阵](./admin-permission-matrix.md)
+
 ## 10. 一句话建议
 
 这个项目最重要的不是“先写代码”，而是先确认你要改的是：

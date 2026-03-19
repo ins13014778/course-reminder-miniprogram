@@ -56,6 +56,8 @@ npm run dev
 - [API 接口文档](./docs/api-reference.md)
 - [宝塔部署教程](./docs/backend-deployment.md)
 - [数据库开源结构说明](./docs/database-open-source.md)
+- [上线检查清单](./docs/release-checklist.md)
+- [管理员权限矩阵](./docs/admin-permission-matrix.md)
 - [测试用例文档](./docs/test-cases.md)
 
 ## 开源数据库结构
