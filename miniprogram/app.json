@@ -9,6 +9,7 @@
     "pages/notes/notes",
     "pages/note-share/note-share",
     "pages/notification-center/notification-center",
+    "pages/account-status/account-status",
     "pages/appeals/appeals",
     "pages/about-us/about-us",
     "pages/feedback/feedback",

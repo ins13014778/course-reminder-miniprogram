@@ -232,6 +232,38 @@ function collectOcrTextElements(ocrData) {
   return elements.sort((a, b) => a.y - b.y || a.x - b.x);
 }
 
+function getElementCenterX(element) {
+  return Number(element.x || 0) + Number(element.width || 0) / 2;
+}
+
+function getElementCenterY(element) {
+  return Number(element.y || 0) + Number(element.height || 0) / 2;
+}
+
+function buildGroupedRows(sectionMarkers) {
+  const groups = [];
+  for (let i = 0; i < sectionMarkers.length; i += 2) {
+    const first = sectionMarkers[i];
+    const second = sectionMarkers[i + 1] || first;
+    groups.push({
+      startSection: first.section,
+      endSection: second.section,
+      center: (first.centerY + second.centerY) / 2
+    });
+  }
+
+  return groups.map((group, index) => {
+    const prev = groups[index - 1];
+    const next = groups[index + 1];
+    return {
+      startSection: group.startSection,
+      endSection: group.endSection,
+      top: prev ? (prev.center + group.center) / 2 : group.center - 120,
+      bottom: next ? (group.center + next.center) / 2 : group.center + 120
+    };
+  });
+}
+
 function parseScheduleFromOcrGrid(ocrData) {
   const elements = collectOcrTextElements(ocrData);
   if (!elements.length) return [];
@@ -245,15 +277,22 @@ function parseScheduleFromOcrGrid(ocrData) {
   elements.forEach((el) => {
     Object.keys(weekdayMap).forEach((name) => {
       if (el.text === name || el.text.indexOf(name) >= 0) {
-        weekdayHeaders.push({ weekday: weekdayMap[name], x: el.x, y: el.y, height: el.height });
+        weekdayHeaders.push({
+          weekday: weekdayMap[name],
+          x: el.x,
+          y: el.y,
+          width: el.width || 0,
+          height: el.height || 0,
+          centerX: getElementCenterX(el)
+        });
       }
     });
   });
 
-  weekdayHeaders.sort((a, b) => a.x - b.x);
+  weekdayHeaders.sort((a, b) => a.centerX - b.centerX);
   const headers = [];
   weekdayHeaders.forEach((header) => {
-    const duplicated = headers.find((item) => item.weekday === header.weekday || Math.abs(item.x - header.x) < 20);
+    const duplicated = headers.find((item) => item.weekday === header.weekday || Math.abs(item.centerX - header.centerX) < 20);
     if (!duplicated) headers.push(header);
   });
   if (headers.length < 5) return [];
@@ -263,12 +302,12 @@ function parseScheduleFromOcrGrid(ocrData) {
   for (let section = 1; section <= 10; section++) {
     const marker = elements.find((el) =>
       el.text === String(section) &&
-      el.x < headers[0].x &&
+      getElementCenterX(el) < headers[0].centerX - 20 &&
       el.y > headerBottomY &&
-      el.width <= 40
+      (el.width || 0) <= 60
     );
     if (marker) {
-      sectionMarkers.push({ section, y: marker.y });
+      sectionMarkers.push({ section, y: marker.y, centerY: getElementCenterY(marker) });
     }
   }
   sectionMarkers.sort((a, b) => a.y - b.y);
@@ -279,22 +318,13 @@ function parseScheduleFromOcrGrid(ocrData) {
     const next = headers[index + 1];
     return {
       weekday: header.weekday,
-      left: prev ? Math.floor((prev.x + header.x) / 2) : 0,
-      right: next ? Math.floor((header.x + next.x) / 2) : 9999
+      centerX: header.centerX,
+      left: prev ? Math.floor((prev.centerX + header.centerX) / 2) : Math.floor(header.centerX - 120),
+      right: next ? Math.floor((header.centerX + next.centerX) / 2) : Math.ceil(header.centerX + 120)
     };
   });
 
-  const rows = [];
-  for (let i = 0; i < sectionMarkers.length; i += 2) {
-    const current = sectionMarkers[i];
-    const nextGroup = sectionMarkers[i + 2];
-    rows.push({
-      startSection: current.section,
-      endSection: sectionMarkers[i + 1] ? sectionMarkers[i + 1].section : current.section,
-      top: current.y - 20,
-      bottom: nextGroup ? nextGroup.y - 20 : 9999
-    });
-  }
+  const rows = buildGroupedRows(sectionMarkers);
 
   const cells = {};
   rows.forEach((row) => {
@@ -313,10 +343,12 @@ function parseScheduleFromOcrGrid(ocrData) {
     if (el.y <= headerBottomY) return;
     if (ignoreText.test(el.text)) return;
     if (el.text.includes('打印时间') || el.text.includes('班课表') || el.text.includes('学年') || el.text.includes('专业')) return;
-    if (/^\d+$/.test(el.text) && el.x < headers[0].x) return;
+    if (/^\d+$/.test(el.text) && getElementCenterX(el) < headers[0].centerX - 20) return;
 
-    const column = columns.find((item) => el.x >= item.left && el.x < item.right);
-    const row = rows.find((item) => el.y >= item.top && el.y < item.bottom);
+    const centerX = getElementCenterX(el);
+    const centerY = getElementCenterY(el);
+    const column = columns.find((item) => centerX >= item.left && centerX < item.right);
+    const row = rows.find((item) => centerY >= item.top && centerY < item.bottom);
     if (!column || !row) return;
 
     cells[`${column.weekday}-${row.startSection}`].items.push(el);
@@ -648,12 +680,7 @@ Page({
       this.setData({ status: 'parsing', recognizedText: displayText });
 
       // 优先用 AI 解析（发送结构化文本），失败则降级为本地解析
-      if (gridCourses.length > 0) {
-        console.log('[Import] Grid parse success:', gridCourses.length);
-        this.onParseComplete(gridCourses, extracted.structured || extracted.plain);
-      } else {
-        this.aiParseSchedule(extracted.structured || extracted.plain);
-      }
+      this.aiParseSchedule(extracted.structured || extracted.plain);
 
     } catch (e) {
       console.error('解析响应失败:', e);

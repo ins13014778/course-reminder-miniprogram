@@ -18,6 +18,7 @@ const routes = [
   { path: '/feedback', component: () => import('../views/Feedback.vue'), meta: { permissions: ['feedback.view'] } },
   { path: '/announcements', component: () => import('../views/Announcements.vue'), meta: { permissions: ['announcement.manage'] } },
   { path: '/content-pages', component: () => import('../views/ContentPages.vue'), meta: { permissions: ['content.manage'] } },
+  { path: '/system-settings', component: () => import('../views/SystemSettings.vue'), meta: { permissions: ['system.manage'] } },
   { path: '/audit-logs', component: () => import('../views/AuditLogs.vue'), meta: { permissions: ['audit.view'] } },
   { path: '/admin-accounts', component: () => import('../views/AdminAccounts.vue'), meta: { permissions: ['admin.manage'] } },
 ]

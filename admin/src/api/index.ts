@@ -97,3 +97,8 @@ export const contentPageApi = {
   getDetail: (key: string) => request.get(`/admin/content-pages/${key}`),
   saveDetail: (key: string, data: any) => request.patch(`/admin/content-pages/${key}`, data),
 }
+
+export const systemSettingsApi = {
+  get: () => request.get('/admin/system-settings'),
+  save: (data: any) => request.patch('/admin/system-settings', data),
+}

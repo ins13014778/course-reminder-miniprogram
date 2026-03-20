@@ -9,6 +9,7 @@ import { CoursesModule } from './courses/courses.module';
 import { ContentPagesModule } from './content-pages/content-pages.module';
 import { ImportModule } from './import/import.module';
 import { RemindersModule } from './reminders/reminders.module';
+import { SystemSettingsModule } from './system-settings/system-settings.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { RemindersModule } from './reminders/reminders.module';
     ContentPagesModule,
     ImportModule,
     RemindersModule,
+    SystemSettingsModule,
   ],
 })
 export class AppModule {}

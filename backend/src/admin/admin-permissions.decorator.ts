@@ -23,6 +23,7 @@ export const ADMIN_PERMISSION_OPTIONS = [
   { key: 'feedback.review', label: '处理反馈' },
   { key: 'announcement.manage', label: '管理公告' },
   { key: 'content.manage', label: '管理页面内容' },
+  { key: 'system.manage', label: '管理系统配置' },
   { key: 'audit.view', label: '查看审计日志' },
   { key: 'admin.manage', label: '管理管理员账号' },
 ] as const;

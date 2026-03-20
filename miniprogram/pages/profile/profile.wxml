@@ -48,10 +48,10 @@
       </view>
     </view>
 
-    <view wx:if="{{restrictions.length}}" class="restriction-card" bindtap="goToAppeals">
+    <view wx:if="{{restrictions.length}}" class="restriction-card" bindtap="goToAccountStatus">
       <view class="restriction-head">
-        <text class="restriction-title">当前有功能限制，可发起申诉</text>
-        <text class="restriction-link">去申诉 ></text>
+        <text class="restriction-title">当前有功能限制，请去状态中心查看</text>
+        <text class="restriction-link">查看状态 ></text>
       </view>
       <view class="restriction-list">
         <view class="restriction-item" wx:for="{{restrictions}}" wx:key="key">
@@ -124,6 +124,10 @@
         <text class="menu-label">我的笔记</text>
         <text class="menu-arrow">></text>
       </view>
+      <view class="menu-item" bindtap="goToAccountStatus">
+        <text class="menu-label">账号状态</text>
+        <text class="menu-arrow">></text>
+      </view>
       <view class="menu-item" bindtap="onClearCourses">
         <text class="menu-label">清空课表</text>
         <text class="menu-arrow">></text>
@@ -137,7 +141,7 @@
         <text class="menu-arrow">></text>
       </view>
       <view class="menu-item" bindtap="goToNotificationCenter">
-        <text class="menu-label">通知管理</text>
+        <text class="menu-label">通知中心</text>
         <text class="menu-arrow">></text>
       </view>
       <view class="menu-item" bindtap="goToAppeals">

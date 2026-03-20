@@ -1,0 +1,83 @@
+<view class="page-shell">
+  <view wx:if="{{!isLoggedIn}}" class="empty-card">
+    <text class="empty-title">请先登录后查看账号状态</text>
+    <text class="empty-desc">登录后可以查看账号、笔记、分享、头像和个性签名的权限状态。</text>
+    <view class="action-btn action-btn-primary" bindtap="goToProfile">前往我的页</view>
+  </view>
+
+  <block wx:elif="{{loading}}">
+    <view class="summary-card">
+      <text class="summary-eyebrow">STATUS CENTER</text>
+      <text class="summary-title">账号状态中心</text>
+      <text class="summary-desc">正在同步你的账号权限、限制原因和申诉记录...</text>
+    </view>
+  </block>
+
+  <block wx:else>
+    <view class="summary-card">
+      <text class="summary-eyebrow">STATUS CENTER</text>
+      <text class="summary-title">账号状态中心</text>
+      <text class="summary-desc">
+        {{activeCount ? '你当前有 ' + activeCount + ' 项功能受限，可在下方查看原因并提交申诉。' : '你当前没有受限功能，账号状态正常。'}}
+      </text>
+
+      <view class="stat-grid">
+        <view class="stat-item stat-item-danger">
+          <text class="stat-value">{{activeCount}}</text>
+          <text class="stat-label">受限项</text>
+        </view>
+        <view class="stat-item">
+          <text class="stat-value">{{restrictions.length - activeCount}}</text>
+          <text class="stat-label">正常项</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="panel-card">
+      <view class="panel-head">
+        <text class="panel-title">权限状态明细</text>
+        <text class="panel-tip">共 {{restrictions.length}} 项</text>
+      </view>
+
+      <view class="status-list">
+        <view class="status-item" wx:for="{{restrictions}}" wx:key="key">
+          <view class="status-top">
+            <text class="status-name">{{item.label}}</text>
+            <view class="status-badge {{item.isActive ? 'status-badge-danger' : 'status-badge-normal'}}">
+              <text class="status-badge-text">{{item.statusText}}</text>
+            </view>
+          </view>
+          <text class="status-line">原因：{{item.reasonText}}</text>
+          <text class="status-line">到期：{{item.untilText}}</text>
+          <text wx:if="{{item.canAppeal}}" class="status-action">该项可申诉，请前往申诉中心提交说明。</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="panel-card">
+      <view class="panel-head">
+        <text class="panel-title">最近申诉记录</text>
+        <text class="panel-tip">最近 10 条</text>
+      </view>
+
+      <view wx:if="{{appealRecords.length}}" class="record-list">
+        <view class="record-item" wx:for="{{appealRecords}}" wx:key="id">
+          <view class="record-top">
+            <text class="record-title">{{item.title}}</text>
+            <text class="record-status">{{item.statusLabel}}</text>
+          </view>
+          <text class="record-meta">{{item.typeLabel}} · {{item.createdText}}</text>
+          <text class="record-content">{{item.content}}</text>
+          <text wx:if="{{item.admin_note}}" class="record-note">审核备注：{{item.admin_note}}</text>
+          <text wx:if="{{item.reviewedText}}" class="record-note">处理时间：{{item.reviewedText}}</text>
+        </view>
+      </view>
+      <view wx:else class="empty-inline">你还没有提交过申诉记录。</view>
+    </view>
+
+    <view class="action-row">
+      <view class="action-btn action-btn-secondary" bindtap="goToProfile">返回我的页</view>
+      <view class="action-btn action-btn-primary" bindtap="goToAppeals">去申诉中心</view>
+    </view>
+  </block>
+</view>

@@ -107,6 +107,7 @@ import {
   Memo,
   Menu,
   Notebook,
+  Setting,
   Share,
   User,
   WarningFilled,

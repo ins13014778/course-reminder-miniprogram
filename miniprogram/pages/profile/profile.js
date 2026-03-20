@@ -8,62 +8,7 @@ const {
 } = require('../../utils/auth');
 const { promptRestrictionAppeal } = require('../../utils/restriction');
 const { callDbQuery } = require('../../utils/cloud-db');
-
-const RESTRICTION_OPTIONS = [
-  { key: 'account', label: '账号功能受限', statusField: 'account_status', reasonField: 'account_ban_reason', untilField: 'account_banned_until' },
-  { key: 'note', label: '笔记功能受限', statusField: 'note_status', reasonField: 'note_ban_reason', untilField: 'note_banned_until' },
-  { key: 'share', label: '分享功能受限', statusField: 'share_status', reasonField: 'share_ban_reason', untilField: 'share_banned_until' },
-  { key: 'avatar', label: '头像功能受限', statusField: 'avatar_status', reasonField: 'avatar_ban_reason', untilField: 'avatar_banned_until' },
-  { key: 'signature', label: '个签功能受限', statusField: 'signature_status', reasonField: 'signature_ban_reason', untilField: 'signature_banned_until' },
-];
-
-function isRestrictionActive(status, bannedUntil) {
-  if (status !== 'banned') {
-    return false;
-  }
-
-  if (!bannedUntil) {
-    return true;
-  }
-
-  const time = new Date(bannedUntil).getTime();
-  if (Number.isNaN(time)) {
-    return true;
-  }
-
-  return time > Date.now();
-}
-
-function formatRestrictionUntil(value) {
-  if (!value) {
-    return '永久限制';
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return String(value);
-  }
-
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
-    date.getDate(),
-  ).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-}
-
-function buildRestrictionSummary(row) {
-  return RESTRICTION_OPTIONS
-    .map((item) => ({
-      key: item.key,
-      label: item.label,
-      reason: row[item.reasonField] || '',
-      bannedUntil: row[item.untilField] || null,
-      status: row[item.statusField],
-    }))
-    .filter((item) => isRestrictionActive(item.status, item.bannedUntil))
-    .map((item) => ({
-      ...item,
-      detail: `${item.reason || '后台未填写原因'} · ${formatRestrictionUntil(item.bannedUntil)}`,
-    }));
-}
+const { buildActiveRestrictionSummary } = require('../../utils/user-status');
 
 Page({
   data: {
@@ -142,7 +87,7 @@ Page({
       this.setData({
         user,
         isLoggedIn: true,
-        restrictions: buildRestrictionSummary(row),
+        restrictions: buildActiveRestrictionSummary(row),
       });
     } catch (error) {
       clearLoginSession();
@@ -161,7 +106,7 @@ Page({
     }
 
     await promptRestrictionAppeal({
-      message: fallbackMessage || `${restriction.label}，请先申诉后再修改。`,
+      message: fallbackMessage || `${restriction.label}已受限，请先申诉后再修改。`,
       reason: restriction.reason,
       bannedUntil: restriction.bannedUntil,
       restrictionType: restriction.key,
@@ -284,7 +229,9 @@ Page({
     const token = getLoginToken();
     if (!token) return;
 
-    const updates = Object.keys(fields).map((key) => `${key} = ?`).join(', ');
+    const updates = Object.keys(fields)
+      .map((key) => `${key} = ?`)
+      .join(', ');
     const values = [...Object.values(fields), token];
 
     wx.showLoading({ title: '保存中...' });
@@ -367,6 +314,10 @@ Page({
 
   goToNotificationCenter() {
     wx.navigateTo({ url: '/pages/notification-center/notification-center' });
+  },
+
+  goToAccountStatus() {
+    wx.navigateTo({ url: '/pages/account-status/account-status' });
   },
 
   goToAppeals() {
