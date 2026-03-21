@@ -218,6 +218,37 @@
   font-weight: 700;
 }
 
+.preview-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.preview-tip {
+  display: block;
+  margin-bottom: 14rpx;
+  font-size: 23rpx;
+  line-height: 1.7;
+  color: #857a67;
+}
+
+.preview-edit-btn {
+  min-width: 96rpx;
+  height: 52rpx;
+  padding: 0 18rpx;
+  box-sizing: border-box;
+  border-radius: 999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(201, 111, 59, 0.12);
+  color: #b75d2c;
+  font-size: 22rpx;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
 .preview-meta,
 .raw-text {
   display: block;
@@ -260,4 +291,67 @@
 
 .cta-primary.solo {
   margin-top: 20rpx;
+}
+
+.editor-card {
+  border: 1rpx solid rgba(201, 111, 59, 0.18);
+}
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+}
+
+.editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.editor-field-full {
+  grid-column: 1 / -1;
+}
+
+.editor-label {
+  font-size: 24rpx;
+  color: #6d6558;
+}
+
+.editor-input,
+.editor-picker {
+  width: 100%;
+  min-height: 84rpx;
+  padding: 0 20rpx;
+  box-sizing: border-box;
+  border-radius: 18rpx;
+  background: rgba(30, 59, 47, 0.05);
+  border: 1rpx solid rgba(30, 59, 47, 0.08);
+  color: #1e2b23;
+  font-size: 26rpx;
+  display: flex;
+  align-items: center;
+}
+
+.editor-actions {
+  margin-top: 18rpx;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12rpx;
+}
+
+.danger-soft {
+  color: #b44d31;
+  border-color: rgba(180, 77, 49, 0.16);
+  background: rgba(180, 77, 49, 0.08);
+}
+
+.ocr-preprocess-canvas {
+  position: fixed;
+  left: -9999rpx;
+  top: -9999rpx;
+  width: 10rpx;
+  height: 10rpx;
+  opacity: 0;
+  pointer-events: none;
 }

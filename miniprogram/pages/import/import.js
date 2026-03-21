@@ -3,6 +3,212 @@ const { importDefaultTemplateCourses } = require('../../utils/default-schedule-i
 const { getLoginToken, getStoredUser, hasLoginSession, updateStoredUser, clearLoginSession } = require('../../utils/auth');
 const { callDbQuery, resolveCurrentUserId } = require('../../utils/cloud-db');
 
+const EDITOR_WEEKDAY_OPTIONS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+const EDITOR_SECTION_OPTIONS = Array.from({ length: 12 }, (_, index) => index + 1);
+
+function formatWeekdayDisplay(weekday) {
+  return EDITOR_WEEKDAY_OPTIONS[Number(weekday) - 1] || '周一';
+}
+
+function clampNumber(value, min, max, fallback) {
+  const parsed = parseInt(value, 10);
+  if (Number.isNaN(parsed)) return fallback;
+  return Math.max(min, Math.min(max, parsed));
+}
+
+function normalizeParsedCourses(courses) {
+  return (courses || [])
+    .map((course) => {
+      const weekday = clampNumber(course.weekday, 1, 7, 1);
+      const startSection = clampNumber(course.start_section, 1, 12, 1);
+      const endSection = clampNumber(course.end_section, startSection, 12, Math.max(startSection, 2));
+      const startWeek = clampNumber(course.start_week, 1, 30, 1);
+      const endWeek = clampNumber(course.end_week, startWeek, 30, Math.max(startWeek, 16));
+
+      return {
+        course_name: String(course.course_name || '').trim(),
+        teacher_name: String(course.teacher_name || '').trim(),
+        classroom: String(course.classroom || '').trim(),
+        weekday,
+        weekdayName: formatWeekdayDisplay(weekday),
+        start_section: startSection,
+        end_section: endSection,
+        start_week: startWeek,
+        end_week: endWeek,
+      };
+    })
+    .filter((course) => course.course_name && course.course_name.length >= 2)
+    .sort((a, b) => {
+      if (a.weekday !== b.weekday) return a.weekday - b.weekday;
+      if (a.start_section !== b.start_section) return a.start_section - b.start_section;
+      return a.course_name.localeCompare(b.course_name, 'zh-CN');
+    });
+}
+
+function getCourseIdentityKey(course) {
+  const weekday = Number(course.weekday) || 0;
+  const courseName = normalizeCourseToken(String(course.course_name || '').trim()) || String(course.course_name || '').trim();
+  return `${weekday}-${courseName}`;
+}
+
+function getCourseConfidenceScore(course) {
+  let score = 0;
+  const teacher = String(course.teacher_name || '').trim();
+  const classroom = String(course.classroom || '').trim();
+  const courseName = String(course.course_name || '').trim();
+
+  if (courseName) score += Math.min(courseName.length, 12);
+  if (teacher) score += 6;
+  if (classroom && classroom !== '待定') score += 8;
+
+  const startSection = Number(course.start_section) || 0;
+  const endSection = Number(course.end_section) || 0;
+  if (startSection > 0 && endSection >= startSection) {
+    score += 4 + (endSection - startSection);
+  }
+
+  const startWeek = Number(course.start_week) || 0;
+  const endWeek = Number(course.end_week) || 0;
+  if (startWeek > 0 && endWeek >= startWeek) {
+    score += 2;
+  }
+
+  return score;
+}
+
+function mergeParsedCourseBatches(batches) {
+  const courseMap = new Map();
+
+  (batches || []).forEach((batch) => {
+    normalizeParsedCourses(batch).forEach((course) => {
+      const key = getCourseIdentityKey(course);
+      const existing = courseMap.get(key);
+      if (!existing) {
+        courseMap.set(key, { ...course });
+        return;
+      }
+
+      const existingScore = getCourseConfidenceScore(existing);
+      const currentScore = getCourseConfidenceScore(course);
+      const preferred = currentScore >= existingScore ? course : existing;
+      const fallback = preferred === course ? existing : course;
+
+      courseMap.set(key, {
+        ...fallback,
+        ...preferred,
+        teacher_name: preferred.teacher_name || fallback.teacher_name,
+        classroom: preferred.classroom && preferred.classroom !== '待定' ? preferred.classroom : fallback.classroom,
+        start_section: preferred.start_section || fallback.start_section,
+        end_section: preferred.end_section || fallback.end_section,
+        start_week: Math.min(fallback.start_week || 99, preferred.start_week || 99),
+        end_week: Math.max(fallback.end_week || 0, preferred.end_week || 0)
+      });
+    });
+  });
+
+  return Array.from(courseMap.values());
+}
+
+function getBatchMetrics(courses) {
+  const normalized = normalizeParsedCourses(courses);
+  const weekdayCounter = new Map();
+
+  normalized.forEach((course) => {
+    weekdayCounter.set(course.weekday, (weekdayCounter.get(course.weekday) || 0) + 1);
+  });
+
+  const uniqueWeekdays = weekdayCounter.size;
+  const maxWeekdayCount = Math.max(0, ...Array.from(weekdayCounter.values()));
+  const filledMetaCount = normalized.filter((course) =>
+    (course.teacher_name && course.teacher_name.trim()) ||
+    (course.classroom && course.classroom.trim() && course.classroom !== '待定')
+  ).length;
+
+  return {
+    courses: normalized,
+    count: normalized.length,
+    uniqueWeekdays,
+    maxWeekdayCount,
+    filledMetaCount
+  };
+}
+
+function scoreBatchForBase(source, courses) {
+  const metrics = getBatchMetrics(courses);
+  if (!metrics.count) {
+    return { source, courses: metrics.courses, score: -999, metrics };
+  }
+
+  let score = 0;
+  score += metrics.uniqueWeekdays * 20;
+  score += metrics.count;
+  score += metrics.filledMetaCount * 2;
+
+  if (metrics.maxWeekdayCount >= Math.max(5, Math.ceil(metrics.count * 0.7))) {
+    score -= 40;
+  }
+
+  if (metrics.count > 20) {
+    score -= (metrics.count - 20) * 3;
+  }
+
+  if (source === 'grid') {
+    score += 12;
+  } else if (source === 'structured') {
+    score += 4;
+  }
+
+  return {
+    source,
+    courses: metrics.courses,
+    score,
+    metrics
+  };
+}
+
+function enrichBaseCourses(baseCourses, candidateGroups) {
+  const normalizedBase = normalizeParsedCourses(baseCourses).map((course) => ({ ...course }));
+
+  normalizedBase.forEach((baseCourse) => {
+    const baseName = normalizeCourseToken(baseCourse.course_name);
+
+    candidateGroups.forEach((group) => {
+      const match = normalizeParsedCourses(group.courses).find((course) => {
+        const candidateName = normalizeCourseToken(course.course_name);
+        if (!candidateName || candidateName !== baseName) return false;
+
+        const sameSection = Math.abs((Number(course.start_section) || 0) - (Number(baseCourse.start_section) || 0)) <= 2;
+        const sameWeekday = Number(course.weekday) === Number(baseCourse.weekday);
+        return sameWeekday || sameSection;
+      });
+
+      if (!match) return;
+
+      if (!baseCourse.teacher_name && match.teacher_name) {
+        baseCourse.teacher_name = match.teacher_name;
+      }
+      if ((!baseCourse.classroom || baseCourse.classroom === '待定') && match.classroom && match.classroom !== '待定') {
+        baseCourse.classroom = match.classroom;
+      }
+      if ((!baseCourse.start_week || baseCourse.start_week === 1) && match.start_week) {
+        baseCourse.start_week = match.start_week;
+      }
+      if ((!baseCourse.end_week || baseCourse.end_week === 16 || baseCourse.end_week === 18) && match.end_week) {
+        baseCourse.end_week = Math.max(baseCourse.end_week || 0, match.end_week);
+      }
+    });
+  });
+
+  return normalizeParsedCourses(normalizedBase);
+}
+
+function looksLikeCollapsedWeekdayResult(courses) {
+  const metrics = getBatchMetrics(courses);
+  if (metrics.count < 5) return false;
+  if (metrics.uniqueWeekdays <= 1) return true;
+  return metrics.maxWeekdayCount >= Math.ceil(metrics.count * 0.7);
+}
+
 function formatDate(fmt) {
   const d = new Date();
   const pad = n => String(n).padStart(2, '0');
@@ -19,6 +225,15 @@ const OCR_CONFIG = {
   maxFileSize: 10 * 1024 * 1024,
   supportedFormats: ['jpg', 'jpeg', 'png', 'bmp', 'gif', 'webp'],
   defaultApiKey: 'sk-NjEwLTExMTk0NDQzMzA3LTE3NzMzMTM3MjA5NTM=',
+};
+
+const OCR_PREPROCESS_CONFIG = {
+  maxEdge: 2200,
+  cropPadding: 16,
+  darkPixelThreshold: 245,
+  rowDarkRatio: 0.004,
+  colDarkRatio: 0.004,
+  contrastFactor: 1.16,
 };
 
 const WEEKDAY_NAMES = ['', '一', '二', '三', '四', '五', '六', '日'];
@@ -240,6 +455,185 @@ function getElementCenterY(element) {
   return Number(element.y || 0) + Number(element.height || 0) / 2;
 }
 
+function getElementBounds(element) {
+  const x = Number(element.x || 0);
+  const y = Number(element.y || 0);
+  const width = Math.max(Number(element.width || 0), 1);
+  const height = Math.max(Number(element.height || 0), 1);
+  return {
+    left: x,
+    right: x + width,
+    top: y,
+    bottom: y + height
+  };
+}
+
+function getRangeOverlap(startA, endA, startB, endB) {
+  return Math.max(0, Math.min(endA, endB) - Math.max(startA, startB));
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function computeCropBoundsFromImageData(imageData, width, height) {
+  if (!imageData || !imageData.data || !width || !height) {
+    return { left: 0, top: 0, width, height };
+  }
+
+  const { data } = imageData;
+  const rowThreshold = Math.max(2, Math.floor(width * OCR_PREPROCESS_CONFIG.rowDarkRatio));
+  const colThreshold = Math.max(2, Math.floor(height * OCR_PREPROCESS_CONFIG.colDarkRatio));
+
+  let top = 0;
+  let bottom = height - 1;
+  let left = 0;
+  let right = width - 1;
+
+  const isDark = (index) => {
+    const alpha = data[index + 3];
+    if (alpha === 0) return false;
+    const gray = data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114;
+    return gray < OCR_PREPROCESS_CONFIG.darkPixelThreshold;
+  };
+
+  for (let y = 0; y < height; y += 1) {
+    let darkCount = 0;
+    for (let x = 0; x < width; x += 1) {
+      if (isDark((y * width + x) * 4)) darkCount += 1;
+    }
+    if (darkCount >= rowThreshold) {
+      top = y;
+      break;
+    }
+  }
+
+  for (let y = height - 1; y >= 0; y -= 1) {
+    let darkCount = 0;
+    for (let x = 0; x < width; x += 1) {
+      if (isDark((y * width + x) * 4)) darkCount += 1;
+    }
+    if (darkCount >= rowThreshold) {
+      bottom = y;
+      break;
+    }
+  }
+
+  for (let x = 0; x < width; x += 1) {
+    let darkCount = 0;
+    for (let y = 0; y < height; y += 1) {
+      if (isDark((y * width + x) * 4)) darkCount += 1;
+    }
+    if (darkCount >= colThreshold) {
+      left = x;
+      break;
+    }
+  }
+
+  for (let x = width - 1; x >= 0; x -= 1) {
+    let darkCount = 0;
+    for (let y = 0; y < height; y += 1) {
+      if (isDark((y * width + x) * 4)) darkCount += 1;
+    }
+    if (darkCount >= colThreshold) {
+      right = x;
+      break;
+    }
+  }
+
+  if (right <= left || bottom <= top) {
+    return { left: 0, top: 0, width, height };
+  }
+
+  const padding = OCR_PREPROCESS_CONFIG.cropPadding;
+  const croppedLeft = clamp(left - padding, 0, width - 1);
+  const croppedTop = clamp(top - padding, 0, height - 1);
+  const croppedRight = clamp(right + padding, croppedLeft + 1, width);
+  const croppedBottom = clamp(bottom + padding, croppedTop + 1, height);
+
+  return {
+    left: croppedLeft,
+    top: croppedTop,
+    width: croppedRight - croppedLeft,
+    height: croppedBottom - croppedTop
+  };
+}
+
+function enhanceImageDataForOcr(imageData) {
+  if (!imageData || !imageData.data) return imageData;
+
+  const { data } = imageData;
+  let graySum = 0;
+  let pixelCount = 0;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+    graySum += gray;
+    pixelCount += 1;
+  }
+
+  const meanGray = pixelCount ? graySum / pixelCount : 220;
+  const threshold = clamp(meanGray * 0.94, 160, 225);
+
+  for (let i = 0; i < data.length; i += 4) {
+    const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+    const contrasted = clamp((gray - 128) * OCR_PREPROCESS_CONFIG.contrastFactor + 128, 0, 255);
+    const value = contrasted > threshold ? 255 : clamp(contrasted * 0.82, 0, 255);
+    data[i] = value;
+    data[i + 1] = value;
+    data[i + 2] = value;
+    data[i + 3] = 255;
+  }
+
+  return imageData;
+}
+
+function findBestColumnForElement(element, columns) {
+  const bounds = getElementBounds(element);
+  let bestColumn = null;
+  let bestScore = -1;
+
+  (columns || []).forEach((column) => {
+    const overlap = getRangeOverlap(bounds.left, bounds.right, column.left, column.right);
+    if (overlap > bestScore) {
+      bestScore = overlap;
+      bestColumn = column;
+    }
+  });
+
+  if (bestColumn && bestScore > 0) return bestColumn;
+
+  const centerX = getElementCenterX(element);
+  return (columns || []).reduce((closest, column) => {
+    if (!closest) return column;
+    return Math.abs(column.centerX - centerX) < Math.abs(closest.centerX - centerX) ? column : closest;
+  }, null);
+}
+
+function findBestRowForElement(element, rows) {
+  const bounds = getElementBounds(element);
+  let bestRow = null;
+  let bestScore = -1;
+
+  (rows || []).forEach((row) => {
+    const overlap = getRangeOverlap(bounds.top, bounds.bottom, row.top, row.bottom);
+    if (overlap > bestScore) {
+      bestScore = overlap;
+      bestRow = row;
+    }
+  });
+
+  if (bestRow && bestScore > 0) return bestRow;
+
+  const centerY = getElementCenterY(element);
+  return (rows || []).reduce((closest, row) => {
+    if (!closest) return row;
+    const rowCenter = (row.top + row.bottom) / 2;
+    const closestCenter = (closest.top + closest.bottom) / 2;
+    return Math.abs(rowCenter - centerY) < Math.abs(closestCenter - centerY) ? row : closest;
+  }, null);
+}
+
 function buildGroupedRows(sectionMarkers) {
   const groups = [];
   for (let i = 0; i < sectionMarkers.length; i += 2) {
@@ -262,6 +656,200 @@ function buildGroupedRows(sectionMarkers) {
       bottom: next ? (group.center + next.center) / 2 : group.center + 120
     };
   });
+}
+
+/*
+function detectCourseNameFromLines(lines) {
+  for (const line of lines || []) {
+    if (
+      !/^\d+$/.test(line) &&
+      !line.includes('鑺?) &&
+      !line.includes('鍛?) &&
+      !line.includes('瀛︽椂') &&
+      !line.includes('瀛﹀垎') &&
+      !line.includes('鏍″尯') &&
+      line.length >= 2
+    ) {
+      return line.replace(/\(\d+\)$/, '').trim();
+    }
+  }
+  return '';
+}
+
+function hasCellMetadata(lines) {
+  const fullText = (lines || []).join(' ');
+  return /(\d+)-(\d+)鍛?/.test(fullText) ||
+    /\((\d+)-(\d+)鑺俓)/.test(fullText) ||
+    /鏁欏|瀹為獙瀹瀹炶瀹鏈烘埧|鏍″尯|鏈帓鍦扮偣|鏈帓/.test(fullText) ||
+    /\/[\u4e00-\u9fa5]{2,4}\//.test(fullText);
+}
+
+*/
+function looksLikeWeekInfo(text) {
+  return /(?:^|[^0-9])\d{1,2}\s*[-~]\s*\d{1,2}\s*\u5468/.test(text) || /^\d{1,2}\u5468$/.test(text);
+}
+
+function looksLikeSectionInfo(text) {
+  return /\(?\d{1,2}\s*[-~]\s*\d{1,2}\s*\u8282\)?/.test(text);
+}
+
+function looksLikeLocationLine(text) {
+  if (!text) return false;
+  return /(\u6559\u5ba4|\u5b9e\u9a8c\u5ba4|\u5b9e\u8bad\u5ba4|\u673a\u623f|\u4f53\u80b2\u9986|\u6821\u533a|\u672a\u6392|\u64cd\u573a|\u7ebf\u4e0a|\u56fe\u4e66\u9986)/.test(text) ||
+    /^[A-Za-z]{0,3}\d{2,}[A-Za-z0-9-]*$/.test(text) ||
+    /^\d{3,}[A-Za-z0-9-]*$/.test(text);
+}
+
+function looksLikeTeacherInfo(text) {
+  return /^\/?[\u4e00-\u9fa5]{2,4}\/?(?:\u603b\u5b66\u65f6|\u5b66\u5206)?$/.test(text);
+}
+
+function looksLikeStatsLine(text) {
+  return /(\u603b\u5b66\u65f6|\u5b66\u5206|\u5b66\u65f6|\u7406\u8bba|\u5b9e\u9a8c|\u4e0a\u673a|\u5b9e\u8df5|[:\uff1a]\d)/.test(text);
+}
+
+function looksLikeCompositeMetaLine(text) {
+  if (!text || !text.includes('/')) return false;
+  return looksLikeLocationLine(text) || looksLikeStatsLine(text) || /\/[\u4e00-\u9fa5]{2,4}(?:\/|$)/.test(text);
+}
+
+function isLikelyCourseTitle(text) {
+  if (!text || text.length < 2) return false;
+  if (!/[\u4e00-\u9fa5A-Za-z]/.test(text)) return false;
+  if (looksLikeWeekInfo(text) || looksLikeSectionInfo(text) || looksLikeLocationLine(text)) return false;
+  if (looksLikeStatsLine(text) || looksLikeCompositeMetaLine(text)) return false;
+  if (/^\d+[A-Za-z]?[\u4e00-\u9fa5]/.test(text)) return false;
+  if (/^[\u4e00-\u9fa5]{2,4}$/.test(text) && looksLikeTeacherInfo(text)) return false;
+  return true;
+}
+
+function scoreCourseNameCandidate(text) {
+  if (!text || /^\d+$/.test(text)) return -100;
+  if (looksLikeWeekInfo(text) || looksLikeSectionInfo(text) || looksLikeLocationLine(text)) return -60;
+  if (looksLikeStatsLine(text) || looksLikeCompositeMetaLine(text)) return -80;
+
+  let score = 0;
+  if (/[\u4e00-\u9fa5]/.test(text)) score += 8;
+  if (/[A-Za-z]/.test(text)) score += 3;
+  if (/[\(\)\uff08\uff09]/.test(text)) score += 1;
+  score += Math.min(text.length, 14);
+
+  if (/^[\u4e00-\u9fa5]{2,4}$/.test(text) && looksLikeTeacherInfo(text)) {
+    score -= 4;
+  }
+
+  return score;
+}
+
+function detectCourseNameFromLines(lines) {
+  const candidates = (lines || [])
+    .map((line) => String(line || '').trim())
+    .filter(Boolean)
+    .filter((line) => isLikelyCourseTitle(line))
+    .map((line) => ({
+      line,
+      score: scoreCourseNameCandidate(line)
+    }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score || a.line.length - b.line.length);
+
+  return candidates.length ? candidates[0].line.replace(/\(\d+\)$/, '').trim() : '';
+}
+
+function hasCellMetadata(lines) {
+  return (lines || []).some((line) => {
+    const text = String(line || '').trim();
+    if (!text) return false;
+    return looksLikeWeekInfo(text) || looksLikeSectionInfo(text) || looksLikeLocationLine(text) || looksLikeStatsLine(text) || /\/[\u4e00-\u9fa5]{2,4}\//.test(text);
+  });
+}
+
+function normalizeCourseToken(text) {
+  return String(text || '')
+    .replace(/[\s\(\)\uff08\uff09]/g, '')
+    .replace(/\d+/g, '')
+    .toLowerCase();
+}
+
+function shouldMergeCourseCells(currentCell, nextCell) {
+  if (!currentCell || !nextCell) return false;
+  if (currentCell.weekday !== nextCell.weekday) return false;
+  if (nextCell.startSection > currentCell.endSection + 1) return false;
+
+  const currentName = normalizeCourseToken(currentCell.courseName);
+  const nextName = normalizeCourseToken(nextCell.courseName);
+
+  if (currentName && nextName) {
+    return currentName === nextName;
+  }
+
+  if (currentName && !nextName) {
+    return nextCell.metadataOnly;
+  }
+
+  if (!currentName && nextName) {
+    return currentCell.metadataOnly;
+  }
+
+  return false;
+}
+
+function detectWeekRange(text) {
+  const fullText = String(text || '');
+  const rangeMatch = fullText.match(/(\d{1,2})\s*[-~]\s*(\d{1,2})\s*\u5468/);
+  if (rangeMatch) {
+    return {
+      startWeek: parseInt(rangeMatch[1], 10),
+      endWeek: parseInt(rangeMatch[2], 10)
+    };
+  }
+
+  const singleMatch = fullText.match(/(^|[^0-9])(\d{1,2})\u5468(?!\d)/);
+  if (singleMatch) {
+    const week = parseInt(singleMatch[2], 10);
+    return { startWeek: week, endWeek: week };
+  }
+
+  return null;
+}
+
+function detectSectionRange(text) {
+  const fullText = String(text || '');
+  const rangeMatch = fullText.match(/\(?(\d{1,2})\s*[-~]\s*(\d{1,2})\s*\u8282\)?/);
+  if (!rangeMatch) return null;
+
+  return {
+    startSection: parseInt(rangeMatch[1], 10),
+    endSection: parseInt(rangeMatch[2], 10)
+  };
+}
+
+function detectTeacherName(lines, courseName) {
+  for (const line of lines || []) {
+    const match = String(line || '').match(/\/([\u4e00-\u9fa5]{2,4})\//);
+    if (match) return match[1];
+  }
+  for (const line of lines || []) {
+    const text = String(line || '').trim();
+    if (!text || text === courseName) continue;
+    if (/^[\u4e00-\u9fa5]{2,4}$/.test(text) && !looksLikeStatsLine(text) && !looksLikeLocationLine(text)) {
+      return text;
+    }
+  }
+  return '';
+}
+
+function detectClassroom(lines) {
+  for (const line of lines || []) {
+    const text = String(line || '').trim();
+    if (!text || looksLikeWeekInfo(text) || looksLikeSectionInfo(text)) continue;
+    const parts = text.split('/').map((item) => item.trim()).filter(Boolean);
+    for (const part of parts) {
+      if (looksLikeLocationLine(part) && !looksLikeStatsLine(part)) return part;
+    }
+    if (looksLikeLocationLine(text) && !looksLikeCompositeMetaLine(text)) return text;
+  }
+  return '';
 }
 
 function parseScheduleFromOcrGrid(ocrData) {
@@ -303,7 +891,7 @@ function parseScheduleFromOcrGrid(ocrData) {
     const marker = elements.find((el) =>
       el.text === String(section) &&
       getElementCenterX(el) < headers[0].centerX - 20 &&
-      el.y > headerBottomY &&
+      getElementCenterY(el) > headerBottomY &&
       (el.width || 0) <= 60
     );
     if (marker) {
@@ -340,15 +928,14 @@ function parseScheduleFromOcrGrid(ocrData) {
 
   const ignoreText = /^(时间段|节次|上午|下午|晚上|讲课|实验|实践|上机)$/;
   elements.forEach((el) => {
-    if (el.y <= headerBottomY) return;
+    const centerY = getElementCenterY(el);
+    if (centerY <= headerBottomY) return;
     if (ignoreText.test(el.text)) return;
     if (el.text.includes('打印时间') || el.text.includes('班课表') || el.text.includes('学年') || el.text.includes('专业')) return;
     if (/^\d+$/.test(el.text) && getElementCenterX(el) < headers[0].centerX - 20) return;
 
-    const centerX = getElementCenterX(el);
-    const centerY = getElementCenterY(el);
-    const column = columns.find((item) => centerX >= item.left && centerX < item.right);
-    const row = rows.find((item) => centerY >= item.top && centerY < item.bottom);
+    const column = findBestColumnForElement(el, columns);
+    const row = findBestRowForElement(el, rows);
     if (!column || !row) return;
 
     cells[`${column.weekday}-${row.startSection}`].items.push(el);
@@ -405,13 +992,68 @@ function parseScheduleFromOcrGrid(ocrData) {
     });
   });
 
-  return courses.filter((course, index, list) =>
-    list.findIndex((item) =>
-      item.course_name === course.course_name &&
-      item.weekday === course.weekday &&
-      item.start_section === course.start_section
-    ) === index
-  );
+  const cellEntries = Object.keys(cells)
+    .map((key) => {
+      const cell = cells[key];
+      const lines = cell.items
+        .slice()
+        .sort((a, b) => a.y - b.y || a.x - b.x)
+        .map((item) => item.text)
+        .filter(Boolean);
+
+      return {
+        key,
+        weekday: cell.weekday,
+        startSection: cell.startSection,
+        endSection: cell.endSection,
+        lines,
+        fullText: lines.join(' '),
+        courseName: detectCourseNameFromLines(lines),
+        metadataOnly: hasCellMetadata(lines)
+      };
+    })
+    .filter((cell) => cell.lines.length)
+    .sort((a, b) => a.weekday - b.weekday || a.startSection - b.startSection);
+
+  const mergedCells = [];
+  cellEntries.forEach((cell) => {
+    const lastCell = mergedCells[mergedCells.length - 1];
+    if (lastCell && shouldMergeCourseCells(lastCell, cell)) {
+      lastCell.endSection = Math.max(lastCell.endSection, cell.endSection);
+      lastCell.lines = lastCell.lines.concat(cell.lines);
+      lastCell.fullText = lastCell.lines.join(' ');
+      lastCell.courseName = detectCourseNameFromLines(lastCell.lines);
+      lastCell.metadataOnly = hasCellMetadata(lastCell.lines);
+      return;
+    }
+
+    mergedCells.push({
+      ...cell,
+      lines: cell.lines.slice()
+    });
+  });
+
+  const mergedCourses = mergedCells
+    .filter((cell) => cell.courseName)
+    .map((cell) => {
+      const sectionRange = detectSectionRange(cell.fullText);
+      const weekRange = detectWeekRange(cell.fullText);
+      const classroom = detectClassroom(cell.lines);
+
+      return {
+        course_name: cell.courseName,
+        teacher_name: detectTeacherName(cell.lines, cell.courseName),
+        classroom: classroom && classroom !== '\u672a\u6392' && classroom !== '\u672a\u6392\u5730\u70b9' ? classroom : '\u5f85\u5b9a',
+        weekday: cell.weekday,
+        start_section: sectionRange ? sectionRange.startSection : cell.startSection,
+        end_section: sectionRange ? sectionRange.endSection : cell.endSection,
+        start_week: weekRange ? weekRange.startWeek : 1,
+        end_week: weekRange ? weekRange.endWeek : 18
+      };
+    });
+
+  const finalCourses = mergedCourses.length ? mergedCourses : courses;
+  return mergeParsedCourseBatches([finalCourses]);
 }
 
 Page({
@@ -424,9 +1066,17 @@ Page({
     importDate: '',
     shareImportKey: '',
     shareImportLoading: false,
+    weekdayOptions: EDITOR_WEEKDAY_OPTIONS,
+    sectionOptions: EDITOR_SECTION_OPTIONS,
+    editorVisible: false,
+    editingIndex: -1,
+    editorCourse: null,
   },
 
   _rawOcrText: '',
+  _preprocessCanvas: null,
+  _lastOriginalImagePath: '',
+  _usingOriginalRetry: false,
 
   onLoad() {
     this.setData({ importDate: formatDate('YYYY-MM-DD') });
@@ -602,14 +1252,16 @@ Page({
       count: 1,
       mediaType: ['image'],
       sourceType: ['album', 'camera'],
-      sizeType: ['compressed'],
+      sizeType: ['original'],
       success: (res) => {
         const tempFilePath = res.tempFiles[0].tempFilePath;
         const tempFileSize = res.tempFiles[0].size;
+        this._lastOriginalImagePath = tempFilePath;
+        this._usingOriginalRetry = false;
         if (tempFileSize > 1024 * 1024) {
           this.compressImage(tempFilePath);
         } else {
-          this.uploadImage(tempFilePath);
+          this.prepareAndUploadImage(tempFilePath, { originalFilePath: tempFilePath });
         }
       },
       fail: () => {
@@ -622,9 +1274,128 @@ Page({
     wx.compressImage({
       src: filePath,
       quality: 80,
-      success: (res) => this.uploadImage(res.tempFilePath),
-      fail: () => this.uploadImage(filePath)
+      success: (res) => this.prepareAndUploadImage(res.tempFilePath, { originalFilePath: filePath }),
+      fail: () => this.prepareAndUploadImage(filePath, { originalFilePath: filePath })
     });
+  },
+
+  prepareAndUploadImage(filePath) {
+    this.preprocessImageForOcr(filePath)
+      .then((processedPath) => {
+        this.uploadImage(processedPath || filePath);
+      })
+      .catch((error) => {
+        console.warn('[Import] 图片预处理失败，回退原图上传:', error);
+        this.uploadImage(filePath);
+      });
+  },
+
+  ensurePreprocessCanvas() {
+    if (this._preprocessCanvas) return Promise.resolve(this._preprocessCanvas);
+
+    return new Promise((resolve, reject) => {
+      const query = wx.createSelectorQuery().in(this);
+      query.select('#ocr-preprocess-canvas').fields({ node: true, size: true }).exec((res) => {
+        const canvasNode = res && res[0] && res[0].node;
+        if (!canvasNode) {
+          reject(new Error('未找到预处理画布'));
+          return;
+        }
+
+        const context = canvasNode.getContext('2d');
+        const dpr = wx.getWindowInfo ? (wx.getWindowInfo().pixelRatio || 1) : 1;
+        this._preprocessCanvas = {
+          canvas: canvasNode,
+          context,
+          dpr
+        };
+        resolve(this._preprocessCanvas);
+      });
+    });
+  },
+
+  loadCanvasImage(canvas, filePath) {
+    return new Promise((resolve, reject) => {
+      const image = canvas.createImage();
+      image.onload = () => resolve(image);
+      image.onerror = reject;
+      image.src = filePath;
+    });
+  },
+
+  getImageInfo(filePath) {
+    return new Promise((resolve, reject) => {
+      wx.getImageInfo({
+        src: filePath,
+        success: resolve,
+        fail: reject
+      });
+    });
+  },
+
+  canvasToTempFilePath(canvas, width, height) {
+    return new Promise((resolve, reject) => {
+      wx.canvasToTempFilePath({
+        canvas,
+        x: 0,
+        y: 0,
+        width,
+        height,
+        destWidth: width,
+        destHeight: height,
+        fileType: 'jpg',
+        quality: 0.92,
+        success: (res) => resolve(res.tempFilePath),
+        fail: reject
+      }, this);
+    });
+  },
+
+  async preprocessImageForOcr(filePath) {
+    const [{ width: rawWidth, height: rawHeight }, { canvas, context, dpr }] = await Promise.all([
+      this.getImageInfo(filePath),
+      this.ensurePreprocessCanvas()
+    ]);
+    const image = await this.loadCanvasImage(canvas, filePath);
+
+    const scale = Math.min(1, OCR_PREPROCESS_CONFIG.maxEdge / Math.max(rawWidth, rawHeight));
+    const drawWidth = Math.max(1, Math.round(rawWidth * scale));
+    const drawHeight = Math.max(1, Math.round(rawHeight * scale));
+
+    canvas.width = Math.max(1, Math.floor(drawWidth * dpr));
+    canvas.height = Math.max(1, Math.floor(drawHeight * dpr));
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, drawWidth, drawHeight);
+    context.drawImage(image, 0, 0, drawWidth, drawHeight);
+
+    const initialImageData = context.getImageData(0, 0, drawWidth, drawHeight);
+    const cropBounds = computeCropBoundsFromImageData(initialImageData, drawWidth, drawHeight);
+
+    const croppedWidth = Math.max(1, cropBounds.width);
+    const croppedHeight = Math.max(1, cropBounds.height);
+
+    canvas.width = Math.max(1, Math.floor(croppedWidth * dpr));
+    canvas.height = Math.max(1, Math.floor(croppedHeight * dpr));
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, croppedWidth, croppedHeight);
+    context.drawImage(
+      image,
+      cropBounds.left / scale,
+      cropBounds.top / scale,
+      cropBounds.width / scale,
+      cropBounds.height / scale,
+      0,
+      0,
+      croppedWidth,
+      croppedHeight
+    );
+
+    const enhancedImageData = enhanceImageDataForOcr(context.getImageData(0, 0, croppedWidth, croppedHeight));
+    context.putImageData(enhancedImageData, 0, 0);
+
+    return this.canvasToTempFilePath(canvas, croppedWidth, croppedHeight);
   },
 
   uploadImage(filePath) {
@@ -633,6 +1404,52 @@ Page({
       wx.showToast({ title: '不支持的图片格式', icon: 'none' });
       return;
     }
+
+    const apiKey = this.getApiKey();
+    this.setData({ status: 'uploading', errorMsg: '', parsedCourses: [], recognizedText: '' });
+
+    wx.uploadFile({
+      url: `${OCR_CONFIG.baseUrl}${OCR_CONFIG.recognizeEndpoint}`,
+      filePath,
+      name: 'file',
+      formData: { ocrType: 'GENERAL' },
+      header: { 'Authorization': `Bearer ${apiKey}` },
+      timeout: 120000,
+      success: (res) => this.handleResponse(res),
+      fail: (err) => {
+        console.error('上传失败:', err);
+        this.setData({ status: 'failed', errorMsg: '上传失败: ' + (err.errMsg || '网络错误') });
+      }
+    });
+  },
+
+  prepareAndUploadImage(filePath, options = {}) {
+    const originalFilePath = options.originalFilePath || filePath;
+    this.preprocessImageForOcr(filePath)
+      .then((processedPath) => {
+        this.uploadImageWithOptions(processedPath || filePath, {
+          originalFilePath,
+          usedPreprocess: true
+        });
+      })
+      .catch((error) => {
+        console.warn('[Import] 图片预处理失败，回退原图上传:', error);
+        this.uploadImageWithOptions(filePath, {
+          originalFilePath,
+          usedPreprocess: false
+        });
+      });
+  },
+
+  uploadImageWithOptions(filePath, options = {}) {
+    const ext = filePath.split('.').pop()?.toLowerCase() || '';
+    if (!OCR_CONFIG.supportedFormats.includes(ext)) {
+      wx.showToast({ title: '不支持的图片格式', icon: 'none' });
+      return;
+    }
+
+    this._lastOriginalImagePath = options.originalFilePath || this._lastOriginalImagePath || filePath;
+    this._lastUploadUsedPreprocess = options.usedPreprocess !== false;
 
     const apiKey = this.getApiKey();
     this.setData({ status: 'uploading', errorMsg: '', parsedCourses: [], recognizedText: '' });
@@ -680,7 +1497,7 @@ Page({
       this.setData({ status: 'parsing', recognizedText: displayText });
 
       // 优先用 AI 解析（发送结构化文本），失败则降级为本地解析
-      this.aiParseSchedule(extracted.structured || extracted.plain);
+      this.fallbackLocalParse(extracted.structured || extracted.plain);
 
     } catch (e) {
       console.error('解析响应失败:', e);
@@ -723,16 +1540,39 @@ Page({
 
   // 本地解析兜底：优先用结构化格式，回退到纯文本
   fallbackLocalParse(ocrText) {
-    var courses = [];
+    const candidateGroups = [];
+
     if (this._gridParsedCourses && this._gridParsedCourses.length > 0) {
-      courses = this._gridParsedCourses;
+      candidateGroups.push({ source: 'grid', courses: this._gridParsedCourses });
     }
-    if (courses.length === 0 && this._structuredOcrText) {
-      courses = this.parseStructuredText(this._structuredOcrText);
+    if (this._structuredOcrText) {
+      const structuredCourses = this.parseStructuredText(this._structuredOcrText);
+      if (structuredCourses.length > 0) {
+        candidateGroups.push({ source: 'structured', courses: structuredCourses });
+      }
     }
-    if (courses.length === 0) {
-      courses = this.parseScheduleText(this._rawOcrText || ocrText);
+
+    const plainCourses = this.parseScheduleText(this._rawOcrText || ocrText);
+    if (plainCourses.length > 0) {
+      candidateGroups.push({ source: 'plain', courses: plainCourses });
     }
+
+    if (!candidateGroups.length) {
+      this.onParseComplete([], ocrText);
+      return;
+    }
+
+    const rankedGroups = candidateGroups
+      .map((group) => scoreBatchForBase(group.source, group.courses))
+      .sort((a, b) => b.score - a.score);
+
+    const baseGroup = rankedGroups[0];
+    const otherGroups = rankedGroups.slice(1).map((group) => ({
+      source: group.source,
+      courses: group.courses
+    }));
+
+    const courses = enrichBaseCourses(baseGroup.courses, otherGroups);
     this.onParseComplete(courses, ocrText);
   },
 
@@ -749,15 +1589,31 @@ Page({
       c.classroom = (c.classroom || '').trim();
     });
 
-    const validCourses = courses.filter(c =>
-      c.course_name && c.course_name.length >= 2 &&
-      c.weekday >= 1 && c.weekday <= 7
-    );
+    const validCourses = normalizeParsedCourses(courses);
 
+    if (
+      looksLikeCollapsedWeekdayResult(validCourses) &&
+      this._lastUploadUsedPreprocess &&
+      this._lastOriginalImagePath &&
+      !this._usingOriginalRetry
+    ) {
+      this._usingOriginalRetry = true;
+      wx.showLoading({ title: '检测到星期异常，重试中...' });
+      this.uploadImageWithOptions(this._lastOriginalImagePath, {
+        originalFilePath: this._lastOriginalImagePath,
+        usedPreprocess: false
+      });
+      return;
+    }
+
+    wx.hideLoading();
     this.setData({
       status: 'success',
       recognizedText: ocrText || '(无文字识别结果)',
-      parsedCourses: validCourses
+      parsedCourses: validCourses,
+      editorVisible: false,
+      editingIndex: -1,
+      editorCourse: null
     });
 
     if (validCourses.length > 0) {
@@ -768,6 +1624,114 @@ Page({
   },
 
   // ==================== 结构化格式解析（基于空间位置重建） ====================
+
+  onEditCourse(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const course = this.data.parsedCourses[index];
+    if (!course) return;
+
+    this.setData({
+      editorVisible: true,
+      editingIndex: index,
+      editorCourse: {
+        course_name: course.course_name || '',
+        teacher_name: course.teacher_name || '',
+        classroom: course.classroom || '',
+        weekday: Number(course.weekday) || 1,
+        start_section: Number(course.start_section) || 1,
+        end_section: Number(course.end_section) || 2,
+        start_week: Number(course.start_week) || 1,
+        end_week: Number(course.end_week) || 16,
+      }
+    });
+  },
+
+  closeCourseEditor() {
+    this.setData({
+      editorVisible: false,
+      editingIndex: -1,
+      editorCourse: null
+    });
+  },
+
+  onEditorTextInput(e) {
+    const field = e.currentTarget.dataset.field;
+    if (!field) return;
+    this.setData({
+      [`editorCourse.${field}`]: e.detail.value || ''
+    });
+  },
+
+  onEditorWeekdayChange(e) {
+    this.setData({
+      'editorCourse.weekday': Number(e.detail.value) + 1
+    });
+  },
+
+  onEditorSectionChange(e) {
+    const field = e.currentTarget.dataset.field;
+    if (!field) return;
+    this.setData({
+      [`editorCourse.${field}`]: Number(e.detail.value) + 1
+    });
+  },
+
+  onEditorNumberBlur(e) {
+    const field = e.currentTarget.dataset.field;
+    if (!field) return;
+    this.setData({
+      [`editorCourse.${field}`]: String(e.detail.value || '').trim()
+    });
+  },
+
+  onDeleteCourse() {
+    const index = this.data.editingIndex;
+    if (index < 0) return;
+
+    const parsedCourses = (this.data.parsedCourses || []).slice();
+    parsedCourses.splice(index, 1);
+
+    this.setData({
+      parsedCourses,
+      editorVisible: false,
+      editingIndex: -1,
+      editorCourse: null
+    });
+    wx.showToast({ title: '已删除这门课', icon: 'success' });
+  },
+
+  onSaveCourseEdit() {
+    const index = this.data.editingIndex;
+    const source = this.data.editorCourse || {};
+    if (index < 0) return;
+
+    const course = normalizeParsedCourses([{
+      course_name: source.course_name,
+      teacher_name: source.teacher_name,
+      classroom: source.classroom,
+      weekday: source.weekday,
+      start_section: source.start_section,
+      end_section: source.end_section,
+      start_week: source.start_week,
+      end_week: source.end_week,
+    }])[0];
+
+    if (!course) {
+      wx.showToast({ title: '请先填写正确课程名', icon: 'none' });
+      return;
+    }
+
+    const parsedCourses = (this.data.parsedCourses || []).slice();
+    parsedCourses[index] = course;
+
+    this.setData({
+      parsedCourses: normalizeParsedCourses(parsedCourses),
+      editorVisible: false,
+      editingIndex: -1,
+      editorCourse: null
+    });
+    wx.showToast({ title: '课程已更新', icon: 'success' });
+  },
 
   parseStructuredText(text) {
     if (!text) return [];
@@ -1213,7 +2177,15 @@ Page({
         const result = res.result;
         if (result && result.success) {
           const count = courses.length;
-          this.setData({ status: 'idle', savedCount: count, parsedCourses: [], recognizedText: '' });
+          this.setData({
+            status: 'idle',
+            savedCount: count,
+            parsedCourses: [],
+            recognizedText: '',
+            editorVisible: false,
+            editingIndex: -1,
+            editorCourse: null
+          });
           wx.setStorageSync('lastImportDate', importDate);
 
           wx.showModal({
@@ -1239,7 +2211,15 @@ Page({
   },
 
   onRetry() {
-    this.setData({ status: 'idle', errorMsg: '', parsedCourses: [], recognizedText: '' });
+    this.setData({
+      status: 'idle',
+      errorMsg: '',
+      parsedCourses: [],
+      recognizedText: '',
+      editorVisible: false,
+      editingIndex: -1,
+      editorCourse: null
+    });
   },
 
   // 底部导航

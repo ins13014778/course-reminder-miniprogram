@@ -1,0 +1,26 @@
+﻿CREATE TABLE `reminder_send_logs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `reminder_id` bigint DEFAULT NULL,
+  `user_id` bigint DEFAULT NULL,
+  `course_id` bigint DEFAULT NULL,
+  `status` enum('sent','failed') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `template_id` varchar(120) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `page_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `course_name` varchar(120) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `start_time` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `location` varchar(120) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `remark` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `error_message` text COLLATE utf8mb4_unicode_ci,
+  `response_json` longtext COLLATE utf8mb4_unicode_ci,
+  `retry_count` int NOT NULL DEFAULT '0',
+  `retried_from_log_id` bigint DEFAULT NULL,
+  `last_retry_at` datetime DEFAULT NULL,
+  `sent_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `_openid` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `idx_reminder_send_logs_status_created` (`status`,`created_at`),
+  KEY `idx_reminder_send_logs_user_created` (`user_id`,`created_at`),
+  KEY `idx_reminder_send_logs_retry_status` (`status`,`retry_count`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

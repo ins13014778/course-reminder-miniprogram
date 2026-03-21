@@ -1,0 +1,26 @@
+﻿[
+    {
+        "ban_reason":  null,
+        "banned_at":  null,
+        "created_at":  "2026-03-16 23:09:06",
+        "id":  1,
+        "is_active":  1,
+        "last_imported_at":  "2026-03-19 18:34:09",
+        "share_key":  "BRKETXTVKN",
+        "status":  "active",
+        "updated_at":  "2026-03-19 18:34:09",
+        "user_id":  1
+    },
+    {
+        "ban_reason":  null,
+        "banned_at":  null,
+        "created_at":  "2026-03-16 23:35:26",
+        "id":  3,
+        "is_active":  1,
+        "last_imported_at":  null,
+        "share_key":  "XF86FLLH6V",
+        "status":  "active",
+        "updated_at":  "2026-03-16 23:35:26",
+        "user_id":  17
+    }
+]

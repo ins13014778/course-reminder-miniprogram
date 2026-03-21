@@ -1,0 +1,194 @@
+﻿{
+    "envId":  "dawdawd15-8g023nsw8cb3f68a",
+    "exportedAt":  "2026-03-21 14:18:24",
+    "batchSize":  500,
+    "tableCount":  31,
+    "tables":  [
+                   {
+                       "tableName":  "admin_accounts",
+                       "rowCount":  1,
+                       "schemaFile":  "schema/admin_accounts.sql",
+                       "dataFile":  "data/admin_accounts.json"
+                   },
+                   {
+                       "tableName":  "admin_action_confirmations",
+                       "rowCount":  0,
+                       "schemaFile":  "schema/admin_action_confirmations.sql",
+                       "dataFile":  "data/admin_action_confirmations.json"
+                   },
+                   {
+                       "tableName":  "admin_audit_logs",
+                       "rowCount":  18,
+                       "schemaFile":  "schema/admin_audit_logs.sql",
+                       "dataFile":  "data/admin_audit_logs.json"
+                   },
+                   {
+                       "tableName":  "announcements",
+                       "rowCount":  1,
+                       "schemaFile":  "schema/announcements.sql",
+                       "dataFile":  "data/announcements.json"
+                   },
+                   {
+                       "tableName":  "content_pages",
+                       "rowCount":  2,
+                       "schemaFile":  "schema/content_pages.sql",
+                       "dataFile":  "data/content_pages.json"
+                   },
+                   {
+                       "tableName":  "content_reports",
+                       "rowCount":  0,
+                       "schemaFile":  "schema/content_reports.sql",
+                       "dataFile":  "data/content_reports.json"
+                   },
+                   {
+                       "tableName":  "course_templates",
+                       "rowCount":  13,
+                       "schemaFile":  "schema/course_templates.sql",
+                       "dataFile":  "data/course_templates.json"
+                   },
+                   {
+                       "tableName":  "courses",
+                       "rowCount":  77,
+                       "schemaFile":  "schema/courses.sql",
+                       "dataFile":  "data/courses.json"
+                   },
+                   {
+                       "tableName":  "mid_project_mg_project_mg_5sNjj0hP6",
+                       "rowCount":  0,
+                       "schemaFile":  "schema/mid_project_mg_project_mg_5sNjj0hP6.sql",
+                       "dataFile":  "data/mid_project_mg_project_mg_5sNjj0hP6.json"
+                   },
+                   {
+                       "tableName":  "mid_project_mg_project_mg_5sNjj3LxQ",
+                       "rowCount":  0,
+                       "schemaFile":  "schema/mid_project_mg_project_mg_5sNjj3LxQ.sql",
+                       "dataFile":  "data/mid_project_mg_project_mg_5sNjj3LxQ.json"
+                   },
+                   {
+                       "tableName":  "mid_project_mg_project_mg_5sNjj6QL5",
+                       "rowCount":  0,
+                       "schemaFile":  "schema/mid_project_mg_project_mg_5sNjj6QL5.sql",
+                       "dataFile":  "data/mid_project_mg_project_mg_5sNjj6QL5.json"
+                   },
+                   {
+                       "tableName":  "note_shares",
+                       "rowCount":  1,
+                       "schemaFile":  "schema/note_shares.sql",
+                       "dataFile":  "data/note_shares.json"
+                   },
+                   {
+                       "tableName":  "notes",
+                       "rowCount":  3,
+                       "schemaFile":  "schema/notes.sql",
+                       "dataFile":  "data/notes.json"
+                   },
+                   {
+                       "tableName":  "project_mgmt_tpl_document",
+                       "rowCount":  0,
+                       "schemaFile":  "schema/project_mgmt_tpl_document.sql",
+                       "dataFile":  "data/project_mgmt_tpl_document.json"
+                   },
+                   {
+                       "tableName":  "project_mgmt_tpl_meeting",
+                       "rowCount":  0,
+                       "schemaFile":  "schema/project_mgmt_tpl_meeting.sql",
+                       "dataFile":  "data/project_mgmt_tpl_meeting.json"
+                   },
+                   {
+                       "tableName":  "project_mgmt_tpl_member",
+                       "rowCount":  0,
+                       "schemaFile":  "schema/project_mgmt_tpl_member.sql",
+                       "dataFile":  "data/project_mgmt_tpl_member.json"
+                   },
+                   {
+                       "tableName":  "project_mgmt_tpl_project",
+                       "rowCount":  0,
+                       "schemaFile":  "schema/project_mgmt_tpl_project.sql",
+                       "dataFile":  "data/project_mgmt_tpl_project.json"
+                   },
+                   {
+                       "tableName":  "project_mgmt_tpl_project_status",
+                       "rowCount":  0,
+                       "schemaFile":  "schema/project_mgmt_tpl_project_status.sql",
+                       "dataFile":  "data/project_mgmt_tpl_project_status.json"
+                   },
+                   {
+                       "tableName":  "project_mgmt_tpl_task",
+                       "rowCount":  0,
+                       "schemaFile":  "schema/project_mgmt_tpl_task.sql",
+                       "dataFile":  "data/project_mgmt_tpl_task.json"
+                   },
+                   {
+                       "tableName":  "project_mgmt_tpl_task_status",
+                       "rowCount":  0,
+                       "schemaFile":  "schema/project_mgmt_tpl_task_status.sql",
+                       "dataFile":  "data/project_mgmt_tpl_task_status.json"
+                   },
+                   {
+                       "tableName":  "project_mgmt_tpl_team",
+                       "rowCount":  0,
+                       "schemaFile":  "schema/project_mgmt_tpl_team.sql",
+                       "dataFile":  "data/project_mgmt_tpl_team.json"
+                   },
+                   {
+                       "tableName":  "project_mgmt_tpl_type",
+                       "rowCount":  0,
+                       "schemaFile":  "schema/project_mgmt_tpl_type.sql",
+                       "dataFile":  "data/project_mgmt_tpl_type.json"
+                   },
+                   {
+                       "tableName":  "reminder_send_logs",
+                       "rowCount":  0,
+                       "schemaFile":  "schema/reminder_send_logs.sql",
+                       "dataFile":  "data/reminder_send_logs.json"
+                   },
+                   {
+                       "tableName":  "reminders",
+                       "rowCount":  1,
+                       "schemaFile":  "schema/reminders.sql",
+                       "dataFile":  "data/reminders.json"
+                   },
+                   {
+                       "tableName":  "schedule_share_keys",
+                       "rowCount":  2,
+                       "schemaFile":  "schema/schedule_share_keys.sql",
+                       "dataFile":  "data/schedule_share_keys.json"
+                   },
+                   {
+                       "tableName":  "user_appeals",
+                       "rowCount":  3,
+                       "schemaFile":  "schema/user_appeals.sql",
+                       "dataFile":  "data/user_appeals.json"
+                   },
+                   {
+                       "tableName":  "user_feedback",
+                       "rowCount":  1,
+                       "schemaFile":  "schema/user_feedback.sql",
+                       "dataFile":  "data/user_feedback.json"
+                   },
+                   {
+                       "tableName":  "user_message_reads",
+                       "rowCount":  0,
+                       "schemaFile":  "schema/user_message_reads.sql",
+                       "dataFile":  "data/user_message_reads.json"
+                   },
+                   {
+                       "tableName":  "user_subscriptions",
+                       "rowCount":  1,
+                       "schemaFile":  "schema/user_subscriptions.sql",
+                       "dataFile":  "data/user_subscriptions.json"
+                   },
+                   {
+                       "tableName":  "user_violation_records",
+                       "rowCount":  0,
+                       "schemaFile":  "schema/user_violation_records.sql",
+                       "dataFile":  "data/user_violation_records.json"
+                   },
+                   {
+                       "tableName":  "users",
+                       "rowCount":  18,
+                       "schemaFile":  "schema/users.sql",
+                       "dataFile":  "data/users.json"
+                   }
+               ]
+}

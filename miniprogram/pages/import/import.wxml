@@ -1,4 +1,5 @@
 <view class="page-shell">
+  <canvas id="ocr-preprocess-canvas" type="2d" class="ocr-preprocess-canvas"></canvas>
   <view class="headline-card">
     <text class="eyebrow">IMPORT</text>
     <text class="headline-title">导入你的课程表</text>
@@ -8,7 +9,7 @@
   <view class="template-entry-card">
     <view class="entry-copy">
       <text class="entry-title">默认课程表模板</text>
-      <text class="entry-sub">如果你现在只想先体验页面，也可以先导入一份内置模板课表。</text>
+      <text class="entry-sub">如果你只是想先体验页面，也可以先导入一份内置模板课表。</text>
     </view>
     <view class="entry-actions">
       <view class="cta-button cta-secondary entry-btn" bindtap="goToSettings">设置</view>
@@ -51,7 +52,7 @@
     <view class="summary-card">
       <text class="summary-mark">READY</text>
       <text class="summary-title">识别到 {{parsedCourses.length}} 门课程</text>
-      <text class="summary-sub">确认无误后，再一键导入到你的课表。</text>
+      <text class="summary-sub">确认无误后再一键导入到你的课表。识别有偏差时，先点编辑修正。</text>
     </view>
 
     <view wx:if="{{parsedCourses.length > 0}}" class="preview-card">
@@ -59,10 +60,75 @@
         <text class="card-title">课程预览</text>
         <text class="card-tag">可导入</text>
       </view>
+      <text class="preview-tip">识别后请逐项核对；如果周几、节次、周次不对，可以先编辑再导入。</text>
       <view wx:for="{{parsedCourses}}" wx:key="index" class="preview-item">
-        <text class="preview-name">{{item.course_name}}</text>
+        <view class="preview-top">
+          <text class="preview-name">{{item.course_name}}</text>
+          <view class="preview-edit-btn" data-index="{{index}}" bindtap="onEditCourse">编辑</view>
+        </view>
         <text class="preview-meta">{{item.teacher_name || '待定老师'}} | {{item.classroom || '待定地点'}}</text>
-        <text class="preview-meta">周{{item.weekdayName}} | 第{{item.start_section}}-{{item.end_section}}节 | 第{{item.start_week}}-{{item.end_week}}周</text>
+        <text class="preview-meta">{{item.weekdayName}} | 第{{item.start_section}}-{{item.end_section}}节 | 第{{item.start_week}}-{{item.end_week}}周</text>
+      </view>
+    </view>
+
+    <view wx:if="{{editorVisible && editorCourse}}" class="preview-card editor-card">
+      <view class="card-head">
+        <text class="card-title">手动校正课程</text>
+        <text class="card-tag">导入前修改</text>
+      </view>
+
+      <view class="editor-grid">
+        <view class="editor-field editor-field-full">
+          <text class="editor-label">课程名称</text>
+          <input class="editor-input" data-field="course_name" value="{{editorCourse.course_name}}" bindinput="onEditorTextInput" />
+        </view>
+
+        <view class="editor-field">
+          <text class="editor-label">老师</text>
+          <input class="editor-input" data-field="teacher_name" value="{{editorCourse.teacher_name}}" bindinput="onEditorTextInput" />
+        </view>
+
+        <view class="editor-field">
+          <text class="editor-label">教室</text>
+          <input class="editor-input" data-field="classroom" value="{{editorCourse.classroom}}" bindinput="onEditorTextInput" />
+        </view>
+
+        <view class="editor-field">
+          <text class="editor-label">周几</text>
+          <picker mode="selector" range="{{weekdayOptions}}" value="{{editorCourse.weekday - 1}}" bindchange="onEditorWeekdayChange">
+            <view class="editor-picker">{{weekdayOptions[editorCourse.weekday - 1]}}</view>
+          </picker>
+        </view>
+
+        <view class="editor-field">
+          <text class="editor-label">开始节次</text>
+          <picker mode="selector" range="{{sectionOptions}}" value="{{editorCourse.start_section - 1}}" data-field="start_section" bindchange="onEditorSectionChange">
+            <view class="editor-picker">第{{editorCourse.start_section}}节</view>
+          </picker>
+        </view>
+
+        <view class="editor-field">
+          <text class="editor-label">结束节次</text>
+          <picker mode="selector" range="{{sectionOptions}}" value="{{editorCourse.end_section - 1}}" data-field="end_section" bindchange="onEditorSectionChange">
+            <view class="editor-picker">第{{editorCourse.end_section}}节</view>
+          </picker>
+        </view>
+
+        <view class="editor-field">
+          <text class="editor-label">开始周</text>
+          <input class="editor-input" type="number" data-field="start_week" value="{{editorCourse.start_week}}" bindblur="onEditorNumberBlur" />
+        </view>
+
+        <view class="editor-field">
+          <text class="editor-label">结束周</text>
+          <input class="editor-input" type="number" data-field="end_week" value="{{editorCourse.end_week}}" bindblur="onEditorNumberBlur" />
+        </view>
+      </view>
+
+      <view class="editor-actions">
+        <view class="cta-button cta-secondary" bindtap="closeCourseEditor">取消</view>
+        <view class="cta-button cta-secondary danger-soft" bindtap="onDeleteCourse">删除这门课</view>
+        <view class="cta-button cta-primary" bindtap="onSaveCourseEdit">保存修改</view>
       </view>
     </view>
 
