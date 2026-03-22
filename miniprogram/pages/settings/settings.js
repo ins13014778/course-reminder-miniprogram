@@ -137,6 +137,18 @@ Page({
     this.setData({ defaultTemplateEnabled: !!e.detail.value });
   },
 
+  openLegalPage(key) {
+    wx.navigateTo({ url: `/pages/legal-document/legal-document?key=${key}` });
+  },
+
+  goToUserAgreement() {
+    this.openLegalPage('user_agreement');
+  },
+
+  goToPrivacyPolicy() {
+    this.openLegalPage('privacy_policy');
+  },
+
   async onGenerateShareKey() {
     if (!hasLoginSession()) {
       wx.showModal({

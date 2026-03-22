@@ -331,3 +331,61 @@
   margin-top: 10rpx;
   border-radius: 20rpx;
 }
+.guest-agreement-box {
+  margin-top: 22rpx;
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 18rpx 20rpx;
+  border-radius: 22rpx;
+  background: rgba(255, 253, 248, 0.08);
+}
+
+.guest-agreement-check {
+  width: 34rpx;
+  height: 34rpx;
+  flex-shrink: 0;
+  margin-top: 4rpx;
+  border-radius: 50%;
+  border: 2rpx solid rgba(255, 253, 248, 0.58);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.guest-agreement-check.checked {
+  background: #c96f3b;
+  border-color: #c96f3b;
+}
+
+.guest-agreement-check-text {
+  color: #fffdf8;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+
+.guest-agreement-copy {
+  flex: 1;
+  font-size: 24rpx;
+  line-height: 1.8;
+}
+
+.guest-agreement-text {
+  color: rgba(255, 253, 248, 0.78);
+}
+
+.guest-agreement-link {
+  color: #ffd7bf;
+  font-weight: 600;
+}
+
+.guest-tip {
+  margin-top: 14rpx;
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: rgba(255, 253, 248, 0.64);
+}
+
+.cta-disabled {
+  opacity: 0.56;
+}

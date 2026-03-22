@@ -12,6 +12,7 @@
     "pages/account-status/account-status",
     "pages/appeals/appeals",
     "pages/about-us/about-us",
+    "pages/legal-document/legal-document",
     "pages/feedback/feedback",
     "pages/profile/profile"
   ],

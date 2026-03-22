@@ -6,8 +6,8 @@
 
     <view class="hero-copy">
       <text class="eyebrow">COURSE REMINDER</text>
-      <text class="title">课表提醒，不用再靠记忆硬撑。</text>
-      <text class="desc">登录后可以查看当天课程、导入课表，并在上课前收到提醒。</text>
+      <text class="title">课表提醒，不用再靠记忆硬撑</text>
+      <text class="desc">登录后可查看当天课程、导入课表，并在上课前收到提醒。</text>
     </view>
 
     <view class="feature-strip">
@@ -28,7 +28,22 @@
 
   <view class="action-card">
     <text class="action-title">现在开始整理你的课程节奏</text>
-    <text class="action-desc">使用微信登录后，课表和个人信息会同步保存。</text>
-    <view class="cta-button login-btn" bindtap="onLogin">微信登录</view>
+    <text class="action-desc">
+      登录前请先阅读并同意《用户服务协议》《隐私政策》。我们仅在你授权后收集昵称、头像等必要信息，用于账号创建、课表保存与提醒服务。
+    </text>
+
+    <view class="agreement-box" bindtap="onToggleAgreement">
+      <view class="agreement-check {{agreed ? 'checked' : ''}}">
+        <text wx:if="{{agreed}}" class="agreement-check-text">✓</text>
+      </view>
+      <view class="agreement-copy">
+        <text class="agreement-text">我已阅读并同意</text>
+        <text class="agreement-link" catchtap="openUserAgreement">《用户服务协议》</text>
+        <text class="agreement-text">和</text>
+        <text class="agreement-link" catchtap="openPrivacyPolicy">《隐私政策》</text>
+      </view>
+    </view>
+
+    <view class="cta-button login-btn {{agreed ? '' : 'disabled'}}" bindtap="onLogin">微信登录</view>
   </view>
 </view>

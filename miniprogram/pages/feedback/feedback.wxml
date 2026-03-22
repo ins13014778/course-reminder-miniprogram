@@ -1,4 +1,4 @@
-<view class="page-shell">
+﻿<view class="page-shell">
   <view class="hero-card">
     <text class="eyebrow">FEEDBACK</text>
     <text class="hero-title">留言反馈</text>
@@ -13,7 +13,7 @@
       <picker mode="selector" range="{{categories}}" value="{{categoryIndex}}" bindchange="onCategoryChange">
         <view class="picker-card">
           <text class="picker-value">{{categories[categoryIndex]}}</text>
-          <text class="picker-arrow">›</text>
+          <text class="picker-arrow">></text>
         </view>
       </picker>
     </view>
@@ -51,7 +51,20 @@
       />
     </view>
 
-    <view class="submit-btn" bindtap="onSubmit">{{loading ? '提交中...' : '提交反馈'}}</view>
+    <view class="agreement-box" bindtap="onToggleAgreement">
+      <view class="agreement-check {{agreed ? 'checked' : ''}}">
+        <text wx:if="{{agreed}}" class="agreement-check-text">✓</text>
+      </view>
+      <view class="agreement-copy">
+        <text class="agreement-text">我已阅读并同意</text>
+        <text class="agreement-link" catchtap="openUserAgreement">《用户服务协议》</text>
+        <text class="agreement-text">和</text>
+        <text class="agreement-link" catchtap="openPrivacyPolicy">《隐私政策》</text>
+      </view>
+    </view>
+
+    <view class="submit-tip">提交反馈前，请先阅读并同意相关协议。</view>
+    <view class="submit-btn {{agreed ? '' : 'submit-btn-disabled'}}" bindtap="onSubmit">{{loading ? '提交中...' : '提交反馈'}}</view>
   </view>
 
   <view class="panel-card">

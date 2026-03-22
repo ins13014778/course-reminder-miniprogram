@@ -1,4 +1,4 @@
-const { callDbQuery, resolveCurrentUserId } = require('../../utils/cloud-db');
+﻿const { callDbQuery, resolveCurrentUserId } = require('../../utils/cloud-db');
 
 const APPEAL_TYPE_OPTIONS = [
   { type: 'account', label: '账号申诉', statusField: 'account_status', reasonField: 'account_ban_reason', untilField: 'account_banned_until' },
@@ -9,42 +9,22 @@ const APPEAL_TYPE_OPTIONS = [
 ];
 
 function isRestrictionActive(status, bannedUntil) {
-  if (status !== 'banned') {
-    return false;
-  }
-
-  if (!bannedUntil) {
-    return true;
-  }
-
+  if (status !== 'banned') return false;
+  if (!bannedUntil) return true;
   const time = new Date(bannedUntil).getTime();
-  if (Number.isNaN(time)) {
-    return true;
-  }
-
+  if (Number.isNaN(time)) return true;
   return time > Date.now();
 }
 
 function formatUntil(value) {
-  if (!value) {
-    return '永久限制';
-  }
-
+  if (!value) return '永久限制';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return String(value);
-  }
-
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
-    date.getDate(),
-  ).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  if (Number.isNaN(date.getTime())) return String(value);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
 function formatMySqlDateTime(value) {
-  if (!value) {
-    return null;
-  }
-
+  if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return typeof value === 'string'
@@ -52,12 +32,7 @@ function formatMySqlDateTime(value) {
       : null;
   }
 
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
-    date.getDate(),
-  ).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(
-    2,
-    '0',
-  )}:${String(date.getSeconds()).padStart(2, '0')}`;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
 }
 
 function buildRestrictions(row) {
@@ -90,6 +65,7 @@ Page({
     title: '',
     content: '',
     contact: '',
+    agreed: false,
     loading: false,
     records: [],
   },
@@ -182,12 +158,29 @@ Page({
     this.setData({ contact: e.detail.value || '' });
   },
 
+  onToggleAgreement() {
+    this.setData({ agreed: !this.data.agreed });
+  },
+
+  openUserAgreement() {
+    wx.navigateTo({ url: '/pages/legal-document/legal-document?key=user_agreement' });
+  },
+
+  openPrivacyPolicy() {
+    wx.navigateTo({ url: '/pages/legal-document/legal-document?key=privacy_policy' });
+  },
+
   async onSubmit() {
     const restrictions = this.data.restrictions || [];
     const target = restrictions[this.data.restrictionIndex];
     const title = String(this.data.title || '').trim();
     const content = String(this.data.content || '').trim();
     const contact = String(this.data.contact || '').trim();
+
+    if (!this.data.agreed) {
+      wx.showToast({ title: '请先阅读并同意用户协议与隐私政策', icon: 'none' });
+      return;
+    }
 
     if (!target) {
       wx.showToast({ title: '当前没有可申诉的限制', icon: 'none' });
@@ -240,6 +233,7 @@ Page({
         content: '',
         contact: '',
         restrictionIndex: 0,
+        agreed: false,
         loading: false,
       });
 

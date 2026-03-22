@@ -161,3 +161,61 @@
   line-height: 1.7;
   white-space: pre-wrap;
 }
+.agreement-box {
+  margin-top: 22rpx;
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 18rpx 20rpx;
+  border-radius: 22rpx;
+  background: rgba(30, 59, 47, 0.06);
+}
+
+.agreement-check {
+  width: 34rpx;
+  height: 34rpx;
+  flex-shrink: 0;
+  margin-top: 4rpx;
+  border-radius: 50%;
+  border: 2rpx solid rgba(30, 59, 47, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.agreement-check.checked {
+  background: #c96f3b;
+  border-color: #c96f3b;
+}
+
+.agreement-check-text {
+  color: #fffdf8;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+
+.agreement-copy {
+  flex: 1;
+  font-size: 24rpx;
+  line-height: 1.8;
+}
+
+.agreement-text {
+  color: #6d6559;
+}
+
+.agreement-link {
+  color: #b95f2c;
+  font-weight: 600;
+}
+
+.submit-tip {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: #857a67;
+}
+
+.submit-btn-disabled {
+  opacity: 0.56;
+}

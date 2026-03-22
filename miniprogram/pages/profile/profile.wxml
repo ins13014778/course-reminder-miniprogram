@@ -1,4 +1,4 @@
-<view class="container">
+﻿<view class="container">
   <view wx:if="{{!isLoggedIn}}" class="guest-shell">
     <view class="guest-card">
       <view class="guest-badge">
@@ -21,7 +21,21 @@
         <text class="guest-line-label">头像</text>
         <text class="guest-line-value">支持自定义</text>
       </view>
-      <view class="cta-button cta-primary guest-login-btn" bindtap="goToLogin">微信登录</view>
+
+      <view class="guest-agreement-box" bindtap="onToggleGuestAgreement">
+        <view class="guest-agreement-check {{agreedGuest ? 'checked' : ''}}">
+          <text wx:if="{{agreedGuest}}" class="guest-agreement-check-text">✓</text>
+        </view>
+        <view class="guest-agreement-copy">
+          <text class="guest-agreement-text">我已阅读并同意</text>
+          <text class="guest-agreement-link" catchtap="goToUserAgreement">《用户服务协议》</text>
+          <text class="guest-agreement-text">和</text>
+          <text class="guest-agreement-link" catchtap="goToPrivacyPolicy">《隐私政策》</text>
+        </view>
+      </view>
+
+      <view class="guest-tip">登录前请先勾选协议，同意后再继续微信登录。</view>
+      <view class="cta-button cta-primary guest-login-btn {{agreedGuest ? '' : 'cta-disabled'}}" bindtap="goToLogin">微信登录</view>
     </view>
   </view>
 

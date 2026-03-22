@@ -1,0 +1,16 @@
+<view class="page-shell">
+  <view class="hero-card">
+    <text class="eyebrow">LEGAL DOCUMENT</text>
+    <text class="hero-title">{{title}}</text>
+    <text class="hero-sub">{{subtitle}}</text>
+  </view>
+
+  <view class="panel-card">
+    <text class="panel-title">正文内容</text>
+    <text class="panel-copy">{{content}}</text>
+  </view>
+
+  <view class="footer-card" wx:if="{{footer}}">
+    <text class="footer-copy">{{footer}}</text>
+  </view>
+</view>

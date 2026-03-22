@@ -108,6 +108,54 @@
   color: rgba(255, 253, 248, 0.74);
 }
 
+.agreement-box {
+  margin-top: 28rpx;
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 18rpx 20rpx;
+  border-radius: 22rpx;
+  background: rgba(255, 253, 248, 0.08);
+}
+
+.agreement-check {
+  width: 34rpx;
+  height: 34rpx;
+  flex-shrink: 0;
+  margin-top: 4rpx;
+  border-radius: 50%;
+  border: 2rpx solid rgba(255, 253, 248, 0.58);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.agreement-check.checked {
+  background: #c96f3b;
+  border-color: #c96f3b;
+}
+
+.agreement-check-text {
+  color: #fffdf8;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+
+.agreement-copy {
+  flex: 1;
+  font-size: 24rpx;
+  line-height: 1.8;
+}
+
+.agreement-text {
+  color: rgba(255, 253, 248, 0.78);
+}
+
+.agreement-link {
+  color: #ffd7bf;
+  font-weight: 600;
+}
+
 .cta-button {
   width: 100%;
   min-height: 92rpx;
@@ -126,4 +174,8 @@
 
 .login-btn {
   margin-top: 28rpx;
+}
+
+.login-btn.disabled {
+  opacity: 0.56;
 }

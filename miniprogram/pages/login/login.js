@@ -3,11 +3,33 @@ const { setLoginSession } = require('../../utils/auth');
 const { promptRestrictionAppeal } = require('../../utils/restriction');
 
 Page({
-  data: {},
+  data: {
+    agreed: false,
+  },
+
+  onToggleAgreement() {
+    this.setData({ agreed: !this.data.agreed });
+  },
+
+  openUserAgreement() {
+    wx.navigateTo({ url: '/pages/legal-document/legal-document?key=user_agreement' });
+  },
+
+  openPrivacyPolicy() {
+    wx.navigateTo({ url: '/pages/legal-document/legal-document?key=privacy_policy' });
+  },
 
   onLogin() {
+    if (!this.data.agreed) {
+      wx.showToast({
+        title: '请先阅读并同意相关协议',
+        icon: 'none',
+      });
+      return;
+    }
+
     wx.getUserProfile({
-      desc: '用于完善用户资料',
+      desc: '用于完善会员资料',
       success: async (res) => {
         const userInfo = res.userInfo;
         wx.showLoading({ title: '登录中...' });
